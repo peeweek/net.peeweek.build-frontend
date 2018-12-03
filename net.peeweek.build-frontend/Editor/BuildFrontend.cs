@@ -84,6 +84,8 @@ public class BuildFrontend : EditorWindow
                                     reportText = "Build has not been run yet.";
 
                                 CurrentTemplate = template;
+                                CurrentProfile = CurrentTemplate.Profile;
+                                CurrentSceneList = CurrentTemplate.SceneList;
                             }
                         }
                     }
@@ -128,8 +130,6 @@ public class BuildFrontend : EditorWindow
     List<BuildProfile> m_BuildProfiles;
     List<SceneList> m_SceneLists;
     Dictionary<BuildTemplate, bool> m_BuildTemplateActivation;
-
-
 
     void BuildDropdownMenus()
     {
