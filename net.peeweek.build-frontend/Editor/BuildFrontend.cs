@@ -1,0 +1,209 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.Build.Reporting;
+
+public class BuildFrontend : EditorWindow
+{
+    public const int CreateAssetMenuPriority = 5801;
+    public const int WindowMenuPriority = 203;
+
+    [MenuItem("File/Build Frontend %&B", priority = WindowMenuPriority)]
+
+    static void OpenWindow()
+    {
+        var window = GetWindow<BuildFrontend>();
+        window.BuildDropdownMenus();
+    }
+
+    private void OnEnable()
+    {
+        titleContent = Contents.title;
+        BuildDropdownMenus();
+    }
+    
+    BuildReport Report;
+    string reportText;
+    
+    private void OnGUI()
+    {
+        using (new GUILayout.HorizontalScope(EditorStyles.toolbar))
+        {
+            DropDownGUI();
+
+            GUILayout.FlexibleSpace();
+            using (new EditorGUI.DisabledGroupScope(CurrentTemplate == null))
+            {
+                if (GUILayout.Button(Contents.build, Styles.BuildButton))
+                {
+                    Report = CurrentTemplate.DoBuild();
+                    reportText = FormatReport(Report);
+                }
+            }
+        }
+
+        if(Report != null)
+        { 
+            EditorGUILayout.TextArea(reportText, GUILayout.ExpandHeight(true));
+        }
+    }
+
+    void DropDownGUI()
+    {
+        GUILayout.Label(Contents.template, EditorStyles.toolbarButton);
+        if (GUILayout.Button(CurrentTemplate == null? "(no template)" : CurrentTemplate.name, EditorStyles.toolbarPopup))
+            TemplateMenu.ShowAsContext();
+        GUILayout.Space(64);
+
+        if(CurrentTemplate != null)
+        {
+            GUILayout.Label(Contents.profile, EditorStyles.toolbarButton);
+            if (GUILayout.Button(CurrentProfile == null ? "(no profile)" : CurrentProfile.name, EditorStyles.toolbarPopup))
+                ProfileMenu.ShowAsContext();
+            GUILayout.Space(64);
+
+            GUILayout.Label(Contents.sceneList, EditorStyles.toolbarButton);
+            if (GUILayout.Button(CurrentSceneList == null ? "(no scenelist)" : CurrentSceneList.name, EditorStyles.toolbarPopup))
+                SceneListMenu.ShowAsContext();
+        }
+    }
+
+    [SerializeField]
+    BuildTemplate CurrentTemplate;
+    [SerializeField]
+    BuildProfile CurrentProfile;
+    [SerializeField]
+    SceneList CurrentSceneList;
+
+    GenericMenu TemplateMenu;
+    GenericMenu ProfileMenu;
+    GenericMenu SceneListMenu;
+
+    void BuildDropdownMenus()
+    {
+        var buildTemplates = AssetDatabase.FindAssets("t:BuildTemplate");
+        var buildProfiles = AssetDatabase.FindAssets("t:BuildProfile");
+        var sceneLists = AssetDatabase.FindAssets("t:SceneList");
+
+        TemplateMenu = new GenericMenu();
+        foreach (var templateGUID in buildTemplates)
+        {
+            string templatePath = AssetDatabase.GUIDToAssetPath(templateGUID);
+            BuildTemplate template = (BuildTemplate)AssetDatabase.LoadAssetAtPath(templatePath, typeof(BuildTemplate));
+            TemplateMenu.AddItem(new GUIContent(template.MenuEntry), false, MenuSetTemplate, template);
+        }
+
+        ProfileMenu = new GenericMenu();
+        foreach (var profileGUID in buildProfiles)
+        {
+            string profilePath = AssetDatabase.GUIDToAssetPath(profileGUID);
+            BuildProfile profile = (BuildProfile)AssetDatabase.LoadAssetAtPath(profilePath, typeof(BuildProfile));
+            ProfileMenu.AddItem(new GUIContent(profile.MenuEntry), false, MenuSetProfile, profile);
+        }
+
+        SceneListMenu = new GenericMenu();
+        foreach (var sceneListGUID in sceneLists)
+        {
+            string sceneListPath = AssetDatabase.GUIDToAssetPath(sceneListGUID);
+            SceneList sceneList = (SceneList)AssetDatabase.LoadAssetAtPath(sceneListPath, typeof(SceneList));
+            SceneListMenu.AddItem(new GUIContent(sceneList.MenuEntry), false, MenuSetSceneList, sceneList);
+        }
+
+    }
+
+    void MenuSetTemplate(object o)
+    {
+        CurrentTemplate = (BuildTemplate)o;
+        CurrentProfile = CurrentTemplate.Profile;
+        CurrentSceneList = CurrentTemplate.SceneList;
+    }
+
+    void MenuSetProfile(object o)
+    {
+        CurrentProfile = (BuildProfile)o;
+        if(CurrentTemplate != null && !CurrentTemplate.name.EndsWith("*"))
+        {
+            CurrentTemplate = Instantiate<BuildTemplate>(CurrentTemplate) as BuildTemplate;
+            CurrentTemplate.name += "*";
+        }
+
+        CurrentTemplate.Profile = CurrentProfile;
+    }
+
+    void MenuSetSceneList(object o)
+    {
+        CurrentSceneList = (SceneList)o;
+        if (CurrentTemplate != null && !CurrentTemplate.name.EndsWith("*"))
+        {
+            CurrentTemplate = Instantiate<BuildTemplate>(CurrentTemplate) as BuildTemplate;
+            CurrentTemplate.name += "*";
+        }
+
+        CurrentTemplate.SceneList = CurrentSceneList;
+    }
+
+    string FormatReport(BuildReport report)
+    {
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+        var summary = report.summary;
+        
+        sb.AppendLine("Build Summary:");
+        sb.AppendLine();
+        sb.AppendLine("Result :" + summary.result);
+        sb.AppendLine("Total Build Time :" + summary.totalTime);
+        sb.AppendLine("Build SIze :" + summary.totalSize);
+        sb.AppendLine("Errors :" + summary.totalErrors);
+        sb.AppendLine("Warnings :" + summary.totalWarnings);
+        sb.AppendLine("Output Path :" + summary.outputPath);
+        sb.AppendLine(); sb.AppendLine();
+
+        if(report.strippingInfo != null)
+        {
+            sb.AppendLine("Included Modules:");
+            sb.AppendLine();
+            var modules = report.strippingInfo.includedModules;
+            foreach(var module in modules)
+            {
+                sb.AppendLine(" * " + module);
+            }
+            sb.AppendLine(); sb.AppendLine();
+        }
+
+        sb.AppendLine("Build Steps:");
+        sb.AppendLine();
+        var steps = report.steps;
+        foreach(var step in steps)
+        {
+            sb.AppendLine("STEP " + step.name);
+            foreach(var message in step.messages)
+            {
+                sb.AppendLine(message.type.ToString() + " : " + message.content);
+            }
+        }
+        sb.AppendLine(); sb.AppendLine();
+
+        return sb.ToString();
+    }
+
+    static class Styles
+    {
+        public static GUIStyle BuildButton;
+
+        static Styles()
+        {
+            BuildButton = new GUIStyle(EditorStyles.toolbarButton);
+            BuildButton.fontStyle = FontStyle.Bold;
+        }
+    }
+    static class Contents
+    {
+        public static GUIContent title = new GUIContent("Build Frontend");
+        public static GUIContent build = new GUIContent("Build");
+        public static GUIContent template = new GUIContent("Template:");
+        public static GUIContent profile = new GUIContent("Profile:");
+        public static GUIContent sceneList = new GUIContent("Scene List:");
+
+    }
+}
