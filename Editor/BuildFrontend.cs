@@ -25,27 +25,22 @@ public class BuildFrontend : EditorWindow
     
     Dictionary<BuildTemplate, BuildReport> Reports = new Dictionary<BuildTemplate, BuildReport>();
     string reportText = string.Empty;
-    
+
     private void OnGUI()
     {
-        using (new GUILayout.HorizontalScope(EditorStyles.toolbar))
+        using(new GUILayout.HorizontalScope(GUILayout.Height(88)))
         {
-            DropDownGUI();
-
-            GUILayout.FlexibleSpace();
-            using (new EditorGUI.DisabledGroupScope(CurrentTemplate == null))
+            var rect = GUILayoutUtility.GetRect(88,88, Styles.Icon, GUILayout.Width(88));
+            GUI.DrawTexture(rect, Contents.icon);
+            using(new GUILayout.VerticalScope())
             {
-                if (GUILayout.Button(Contents.build, Styles.BuildButton))
-                {
-                    foreach(var kvp_template in m_BuildTemplateActivation)
-                    {
-                        if(kvp_template.Value)
-                        {
-                            var Report = kvp_template.Key.DoBuild();
-                            Reports[kvp_template.Key] = Report;
-                        }
-                    }
-                }
+                GUILayout.Space(12);
+                GUILayout.Label(Contents.title, Styles.Title);
+            }
+            if(GUILayout.Button("Build", Styles.BuildButton, GUILayout.Width(128), GUILayout.Height(64)))
+            {
+                // Run Build
+                DoAllBuild();
             }
         }
 
@@ -57,13 +52,26 @@ public class BuildFrontend : EditorWindow
         }
     }
 
+    void DoAllBuild()
+    {
+        foreach(var kvp_template in m_BuildTemplateActivation)
+        {
+            if(kvp_template.Value)
+            {
+                var Report = kvp_template.Key.DoBuild();
+                Reports[kvp_template.Key] = Report;
+            }
+        }
+
+    }
+
     Vector2 scrollPosition = Vector2.zero;
 
     void DrawTemplateList()
     {
         using (new GUILayout.ScrollViewScope(scrollPosition, false, true, GUILayout.Width(240)))
         {
-            using (new GUILayout.VerticalScope())
+            using (new GUILayout.VerticalScope(EditorStyles.textField))
             {
                 foreach (var catKVP in m_BuildTemplates)
                 {
@@ -76,7 +84,7 @@ public class BuildFrontend : EditorWindow
                             GUILayout.Space(16);
 
                             m_BuildTemplateActivation[template] = GUILayout.Toggle(m_BuildTemplateActivation[template],GUIContent.none, GUILayout.Width(24));
-                            if(GUILayout.Button(template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
+                            if(GUILayout.Button(template.Name != null? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
                             {
                                 if (Reports.ContainsKey(template) && Reports[template] != null)
                                     reportText = FormatReport(Reports[template]);
@@ -86,6 +94,7 @@ public class BuildFrontend : EditorWindow
                                 CurrentTemplate = template;
                                 CurrentProfile = CurrentTemplate.Profile;
                                 CurrentSceneList = CurrentTemplate.SceneList;
+                                Selection.activeObject = template;
                             }
                         }
                     }
@@ -253,13 +262,22 @@ public class BuildFrontend : EditorWindow
     {
         public static GUIStyle BuildButton;
         public static GUIStyle SelectedProfile;
+        public static GUIStyle Title;
+        public static GUIStyle Icon;
+
         static Styles()
         {
-            BuildButton = new GUIStyle(EditorStyles.toolbarButton);
-            BuildButton.fontStyle = FontStyle.Bold;
+            BuildButton = new GUIStyle(EditorStyles.miniButton);
+            BuildButton.fontSize = 14;
+            BuildButton.margin = new RectOffset(0,0,12,12);
 
             SelectedProfile = new GUIStyle(EditorStyles.label);
             SelectedProfile.fontStyle = FontStyle.Bold;
+
+            Title = new GUIStyle(EditorStyles.label);
+            Title.fontSize = 18;
+
+            Icon = new GUIStyle(EditorStyles.label);
         }
     }
     static class Contents
@@ -269,6 +287,12 @@ public class BuildFrontend : EditorWindow
         public static GUIContent template = new GUIContent("Template:");
         public static GUIContent profile = new GUIContent("Profile:");
         public static GUIContent sceneList = new GUIContent("Scene List:");
+        public static Texture icon;
+
+        static Contents()
+        {
+            icon = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/BuildFrontend.png");
+        }
 
     }
 }
