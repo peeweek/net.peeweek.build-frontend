@@ -14,13 +14,13 @@ public class BuildFrontend : EditorWindow
     static void OpenWindow()
     {
         var window = GetWindow<BuildFrontend>();
-        window.BuildDropdownMenus();
+        window.PopulateAssets();
     }
 
     private void OnEnable()
     {
         titleContent = Contents.title;
-        BuildDropdownMenus();
+        PopulateAssets();
     }
     
     Dictionary<BuildTemplate, BuildReport> Reports = new Dictionary<BuildTemplate, BuildReport>();
@@ -43,12 +43,19 @@ public class BuildFrontend : EditorWindow
                 DoAllBuild();
             }
         }
-
+        using(new GUILayout.HorizontalScope(EditorStyles.toolbar))
+        {
+            if(GUILayout.Button("Refresh", EditorStyles.toolbarButton))
+            {
+                PopulateAssets();
+            }
+            GUILayout.FlexibleSpace();
+        }
 
         using (new GUILayout.HorizontalScope())
         {
             DrawTemplateList();
-            EditorGUILayout.TextArea(reportText, GUILayout.ExpandHeight(true));
+            EditorGUILayout.TextArea(reportText, EditorStyles.label, GUILayout.ExpandHeight(true));
         }
     }
 
@@ -61,8 +68,8 @@ public class BuildFrontend : EditorWindow
                 var Report = kvp_template.Key.DoBuild();
                 Reports[kvp_template.Key] = Report;
             }
+            Repaint();
         }
-
     }
 
     Vector2 scrollPosition = Vector2.zero;
@@ -71,11 +78,11 @@ public class BuildFrontend : EditorWindow
     {
         using (new GUILayout.ScrollViewScope(scrollPosition, false, true, GUILayout.Width(240)))
         {
-            using (new GUILayout.VerticalScope(EditorStyles.textField))
+            using (new GUILayout.VerticalScope(EditorStyles.label))
             {
                 foreach (var catKVP in m_BuildTemplates)
                 {
-                    EditorGUILayout.LabelField(catKVP.Key, EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(catKVP.Key == string.Empty? "General": catKVP.Key, EditorStyles.boldLabel);
 
                     foreach (var template in catKVP.Value)
                     {
@@ -84,7 +91,7 @@ public class BuildFrontend : EditorWindow
                             GUILayout.Space(16);
 
                             m_BuildTemplateActivation[template] = GUILayout.Toggle(m_BuildTemplateActivation[template],GUIContent.none, GUILayout.Width(24));
-                            if(GUILayout.Button(template.Name != null? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
+                            if(GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
                             {
                                 if (Reports.ContainsKey(template) && Reports[template] != null)
                                     reportText = FormatReport(Reports[template]);
@@ -140,7 +147,7 @@ public class BuildFrontend : EditorWindow
     List<SceneList> m_SceneLists;
     Dictionary<BuildTemplate, bool> m_BuildTemplateActivation;
 
-    void BuildDropdownMenus()
+    void PopulateAssets()
     {
         var buildTemplates = AssetDatabase.FindAssets("t:BuildTemplate");
         var buildProfiles = AssetDatabase.FindAssets("t:BuildProfile");
