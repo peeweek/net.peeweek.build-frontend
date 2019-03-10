@@ -34,13 +34,35 @@ public class BuildFrontend : EditorWindow
             GUI.DrawTexture(rect, Contents.icon);
             using(new GUILayout.VerticalScope())
             {
-                GUILayout.Space(12);
+                GUILayout.Space(8);
                 GUILayout.Label(Contents.title, Styles.Title);
+                GUILayout.FlexibleSpace();
+                DrawProgressBar();
+                GUILayout.Space(8);
             }
-            if(GUILayout.Button("Build", Styles.BuildButton, GUILayout.Width(128), GUILayout.Height(64)))
+            using(new GUILayout.VerticalScope(GUILayout.Width(128)))
             {
-                // Run Build
-                DoAllBuild();
+                GUILayout.Space(12);
+                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
+                {
+                    // Run Build
+                    DoAllBuild();
+                }
+
+                BuildTemplate template = (Selection.activeObject as BuildTemplate);
+
+                EditorGUI.BeginDisabledGroup(template == null);
+                if(GUILayout.Button("Build Selected", EditorStyles.miniButton, GUILayout.Height(16)))
+                {
+                    var report = template.DoBuild();
+                    if(report != null)
+                        Reports[template] = report;
+                }
+                if(GUILayout.Button("Run", EditorStyles.miniButton, GUILayout.Height(16)))
+                {
+                    template.Run();
+                }
+                EditorGUI.EndDisabledGroup();
             }
         }
         using(new GUILayout.HorizontalScope(EditorStyles.toolbar))
@@ -59,16 +81,63 @@ public class BuildFrontend : EditorWindow
         }
     }
 
+    void DrawProgressBar()
+    {
+        GUI.backgroundColor = Color.gray;
+        using(new GUILayout.HorizontalScope(Styles.progressBarItem, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
+        {
+            foreach(var cat in m_BuildTemplates)
+            {
+                foreach(var template in cat.Value)
+                {
+                    GUI.backgroundColor = new Color(.3f,.3f,.3f,1.0f);
+                    GUI.contentColor = Color.white;
+                    if(!template.Enabled)
+                    {
+                        GUI.backgroundColor = new Color(.4f,.4f,.4f,1.0f);
+                        GUI.contentColor = new Color(1.0f,1.0f,1.0f, 0.5f);
+                    }
+                    else if(Reports.ContainsKey(template) && Reports[template] != null)
+                    {
+                        var report = Reports[template];
+                        switch(report.summary.result)
+                        {
+                            case BuildResult.Succeeded:
+                                GUI.backgroundColor = new Color(.15f,.5f,.05f,1.0f);
+                                GUI.contentColor = new Color(0.3f,1.0f,0.1f, 1.0f);                                
+                                break;
+                            case BuildResult.Cancelled:
+                            case BuildResult.Unknown:
+                            case BuildResult.Failed:
+                                GUI.backgroundColor = new Color(.5f,.05f,.15f,1.0f);
+                                GUI.contentColor = new Color(1.0f,0.1f,0.3f, 1.0f);                                
+                                break;
+
+                        }
+
+                    }
+                
+                    GUILayout.Label(template.name, Styles.progressBarItem, GUILayout.ExpandHeight(true));
+                }
+            }
+        }
+        GUI.contentColor = Color.white;
+        GUI.backgroundColor = Color.white;    
+    }
+
     void DoAllBuild()
     {
-        foreach(var kvp_template in m_BuildTemplateActivation)
+        foreach(var cat in m_BuildTemplates)
         {
-            if(kvp_template.Value)
+            foreach(var template in cat.Value)
             {
-                var Report = kvp_template.Key.DoBuild();
-                Reports[kvp_template.Key] = Report;
+                if(template.Enabled)
+                {
+                    var Report = template.DoBuild();
+                    Reports[template] = Report;
+                }
+                Repaint();
             }
-            Repaint();
         }
     }
 
@@ -90,7 +159,7 @@ public class BuildFrontend : EditorWindow
                         {
                             GUILayout.Space(16);
 
-                            m_BuildTemplateActivation[template] = GUILayout.Toggle(m_BuildTemplateActivation[template],GUIContent.none, GUILayout.Width(24));
+                            template.Enabled = GUILayout.Toggle(template.Enabled,GUIContent.none, GUILayout.Width(24));
                             if(GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
                             {
                                 if (Reports.ContainsKey(template) && Reports[template] != null)
@@ -145,7 +214,6 @@ public class BuildFrontend : EditorWindow
     Dictionary<string, List<BuildTemplate>> m_BuildTemplates;
     List<BuildProfile> m_BuildProfiles;
     List<SceneList> m_SceneLists;
-    Dictionary<BuildTemplate, bool> m_BuildTemplateActivation;
 
     void PopulateAssets()
     {
@@ -156,7 +224,6 @@ public class BuildFrontend : EditorWindow
         m_BuildTemplates = new Dictionary<string, List<BuildTemplate>>();
         m_BuildProfiles = new List<BuildProfile>();
         m_SceneLists = new List<SceneList>();
-        m_BuildTemplateActivation = new Dictionary<BuildTemplate, bool>();
 
         TemplateMenu = new GenericMenu();
         foreach (var templateGUID in buildTemplates)
@@ -167,7 +234,7 @@ public class BuildFrontend : EditorWindow
                 m_BuildTemplates.Add(template.Category, new List<BuildTemplate>());
 
             m_BuildTemplates[template.Category].Add(template);
-            m_BuildTemplateActivation.Add(template, true);
+
             TemplateMenu.AddItem(new GUIContent(template.MenuEntry), false, MenuSetTemplate, template);
         }
 
@@ -268,6 +335,7 @@ public class BuildFrontend : EditorWindow
     static class Styles
     {
         public static GUIStyle BuildButton;
+        public static GUIStyle progressBarItem;
         public static GUIStyle SelectedProfile;
         public static GUIStyle Title;
         public static GUIStyle Icon;
@@ -276,7 +344,6 @@ public class BuildFrontend : EditorWindow
         {
             BuildButton = new GUIStyle(EditorStyles.miniButton);
             BuildButton.fontSize = 14;
-            BuildButton.margin = new RectOffset(0,0,12,12);
 
             SelectedProfile = new GUIStyle(EditorStyles.label);
             SelectedProfile.fontStyle = FontStyle.Bold;
@@ -285,6 +352,22 @@ public class BuildFrontend : EditorWindow
             Title.fontSize = 18;
 
             Icon = new GUIStyle(EditorStyles.label);
+
+            progressBarItem = new GUIStyle(EditorStyles.miniLabel);
+            progressBarItem.alignment = TextAnchor.MiddleCenter;
+            progressBarItem.margin = new RectOffset(0,0,0,0);
+            progressBarItem.padding = new RectOffset(0,0,0,0);
+            progressBarItem.wordWrap = true;
+            progressBarItem.onActive.background = Texture2D.whiteTexture;
+            progressBarItem.onFocused.background = Texture2D.whiteTexture;
+            progressBarItem.onHover.background = Texture2D.whiteTexture;
+            progressBarItem.onNormal.background = Texture2D.whiteTexture;
+            progressBarItem.active.background = Texture2D.whiteTexture;
+            progressBarItem.focused.background = Texture2D.whiteTexture;
+            progressBarItem.hover.background = Texture2D.whiteTexture;
+            progressBarItem.normal.background = Texture2D.whiteTexture;
+            
+            
         }
     }
     static class Contents

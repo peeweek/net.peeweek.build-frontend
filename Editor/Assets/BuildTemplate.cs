@@ -6,9 +6,12 @@ using UnityEditor.Build.Reporting;
 
 public class BuildTemplate : BuildFrontendAssetBase
 {
+    public bool Enabled = true;
+
     [Header("Build Template")]
     public string BuildPath;
     public string ExecutableName;
+
     public BuildProfile Profile;
     public SceneList SceneList;
 
@@ -22,6 +25,17 @@ public class BuildTemplate : BuildFrontendAssetBase
 
     public BuildReport DoBuild()
     {
-        return BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
+        if(Enabled)
+            return BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
+        else
+        {
+            Debug.LogWarning("Build is disabled");
+            return null;
+        }
+    }
+
+    public void Run()
+    {
+        Debug.LogWarning("Not implemented yet");
     }
 }
