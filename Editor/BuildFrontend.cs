@@ -127,17 +127,25 @@ public class BuildFrontend : EditorWindow
 
     void DoAllBuild()
     {
-        foreach(var cat in m_BuildTemplates)
+        try
         {
-            foreach(var template in cat.Value)
+            foreach(var cat in m_BuildTemplates)
             {
-                if(template.Enabled)
+                foreach(var template in cat.Value)
                 {
-                    var Report = template.DoBuild();
-                    Reports[template] = Report;
+                    EditorUtility.DisplayProgressBar("Build Frontend", $"Building {template.name} ...", 1.0f);
+                    if(template.Enabled)
+                    {
+                        var Report = template.DoBuild();
+                        Reports[template] = Report;
+                    }
+                    Repaint();
                 }
-                Repaint();
             }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
         }
     }
 
