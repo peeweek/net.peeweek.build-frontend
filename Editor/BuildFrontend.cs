@@ -163,9 +163,9 @@ public class BuildFrontend : EditorWindow
                             if(GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
                             {
                                 if (Reports.ContainsKey(template) && Reports[template] != null)
-                                    reportText = FormatReport(Reports[template]);
+                                    FormatReportGUI(Reports[template]);
                                 else
-                                    reportText = "Build has not been run yet.";
+                                    GUILayout.Label("Build has not been run yet");
 
                                 CurrentTemplate = template;
                                 CurrentProfile = CurrentTemplate.Profile;
@@ -288,48 +288,46 @@ public class BuildFrontend : EditorWindow
         CurrentTemplate.SceneList = CurrentSceneList;
     }
 
-    string FormatReport(BuildReport report)
+    void FormatReportGUI(BuildReport report)
     {
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
         var summary = report.summary;
         
-        sb.AppendLine("Build Summary:");
-        sb.AppendLine();
-        sb.AppendLine("Result :" + summary.result);
-        sb.AppendLine("Total Build Time :" + summary.totalTime);
-        sb.AppendLine("Build SIze :" + summary.totalSize);
-        sb.AppendLine("Errors :" + summary.totalErrors);
-        sb.AppendLine("Warnings :" + summary.totalWarnings);
-        sb.AppendLine("Output Path :" + summary.outputPath);
-        sb.AppendLine(); sb.AppendLine();
-
+        GUILayout.Label(summary.result.ToString(), Styles.boldLabelLarge);
+        GUILayout.Space(8);
+        GUILayout.Label("Total Build Time :" + summary.totalTime);
+        EditorGUILayout.IntField("Build Size",(int)summary.totalSize);
+        EditorGUILayout.IntField("Errors",(int)summary.totalErrors);
+        EditorGUILayout.IntField("Warnings",(int)summary.totalWarnings);
+        EditorGUILayout.TextField("Output Path", summary.outputPath);
+        
         if(report.strippingInfo != null)
         {
-            sb.AppendLine("Included Modules:");
-            sb.AppendLine();
+            GUILayout.Space(8);
+            
+            GUILayout.Label("Included Modules", EditorStyles.boldLabel);
             var modules = report.strippingInfo.includedModules;
             foreach(var module in modules)
             {
-                sb.AppendLine(" * " + module);
+                EditorGUILayout.LabelField(module, EditorStyles.foldout);
             }
-            sb.AppendLine(); sb.AppendLine();
         }
 
-        sb.AppendLine("Build Steps:");
-        sb.AppendLine();
+
+        GUILayout.Space(8);    
+        GUILayout.Label("Build Steps", EditorStyles.boldLabel);
         var steps = report.steps;
         foreach(var step in steps)
         {
-            sb.AppendLine("STEP " + step.name);
+            EditorGUI.indentLevel++;
+            GUILayout.Label(step.name, EditorStyles.foldout);
+            EditorGUI.indentLevel++;
             foreach(var message in step.messages)
             {
-                sb.AppendLine(message.type.ToString() + " : " + message.content);
+                EditorGUILayout.LabelField( message.type + " : " + message.content);
             }
+            EditorGUI.indentLevel-= 2;
         }
-        sb.AppendLine(); sb.AppendLine();
-
-        return sb.ToString();
     }
 
     static class Styles
@@ -339,6 +337,7 @@ public class BuildFrontend : EditorWindow
         public static GUIStyle SelectedProfile;
         public static GUIStyle Title;
         public static GUIStyle Icon;
+        public static GUIStyle boldLabelLarge;
 
         static Styles()
         {
@@ -346,7 +345,11 @@ public class BuildFrontend : EditorWindow
             BuildButton.fontSize = 14;
 
             SelectedProfile = new GUIStyle(EditorStyles.label);
-            SelectedProfile.fontStyle = FontStyle.Bold;
+            var pink = EditorGUIUtility.isProSkin? new Color(1.0f, 0.2f, 0.5f, 1.0f) : new Color(1.0f, 0.05f, 0.4f, 1.0f);
+            SelectedProfile.active.textColor = pink;
+            SelectedProfile.focused.textColor = pink;
+            SelectedProfile.hover.textColor = pink;
+            SelectedProfile.normal.textColor = pink;
 
             Title = new GUIStyle(EditorStyles.label);
             Title.fontSize = 18;
@@ -367,7 +370,8 @@ public class BuildFrontend : EditorWindow
             progressBarItem.hover.background = Texture2D.whiteTexture;
             progressBarItem.normal.background = Texture2D.whiteTexture;
             
-            
+            boldLabelLarge = new GUIStyle(EditorStyles.boldLabel);
+            boldLabelLarge.fontSize = 16;    
         }
     }
     static class Contents
