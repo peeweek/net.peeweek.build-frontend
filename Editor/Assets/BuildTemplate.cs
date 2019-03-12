@@ -6,7 +6,7 @@ using UnityEditor.Build.Reporting;
 
 public class BuildTemplate : BuildFrontendAssetBase
 {
-    public bool Enabled = true;
+    public bool BuildEnabled;
 
     [Header("Build Template")]
     public string BuildPath;
@@ -25,7 +25,7 @@ public class BuildTemplate : BuildFrontendAssetBase
 
     public BuildReport DoBuild()
     {
-        if(Enabled)
+        if(BuildEnabled)
             return BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
         else
         {

@@ -92,7 +92,7 @@ public class BuildFrontend : EditorWindow
                 {
                     GUI.backgroundColor = new Color(.3f,.3f,.3f,1.0f);
                     GUI.contentColor = Color.white;
-                    if(!template.Enabled)
+                    if(!template.BuildEnabled)
                     {
                         GUI.backgroundColor = new Color(.4f,.4f,.4f,1.0f);
                         GUI.contentColor = new Color(1.0f,1.0f,1.0f, 0.5f);
@@ -134,7 +134,7 @@ public class BuildFrontend : EditorWindow
                 foreach(var template in cat.Value)
                 {
                     EditorUtility.DisplayProgressBar("Build Frontend", $"Building {template.name} ...", 1.0f);
-                    if(template.Enabled)
+                    if(template.BuildEnabled)
                     {
                         var Report = template.DoBuild();
                         Reports[template] = Report;
@@ -167,8 +167,13 @@ public class BuildFrontend : EditorWindow
                         {
                             GUILayout.Space(16);
 
-                            template.Enabled = GUILayout.Toggle(template.Enabled,GUIContent.none, GUILayout.Width(24));
-                            if(GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
+                            template.BuildEnabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
+                            if(GUI.changed)
+                            {
+                                EditorUtility.SetDirty(template);
+                            }
+
+                            if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
                             {
                                 if (Reports.ContainsKey(template) && Reports[template] != null)
                                     FormatReportGUI(Reports[template]);
