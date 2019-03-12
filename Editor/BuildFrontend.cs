@@ -77,8 +77,23 @@ public class BuildFrontend : EditorWindow
         using (new GUILayout.HorizontalScope())
         {
             DrawTemplateList();
-            EditorGUILayout.TextArea(reportText, EditorStyles.label, GUILayout.ExpandHeight(true));
+            DrawReport();
         }
+    }
+
+    void DrawReport()
+    {
+        reportScroll = EditorGUILayout.BeginScrollView(reportScroll);
+        if (m_SelectedReport != null)
+        {
+            FormatReportGUI(m_SelectedReport);
+        }
+        else
+        {
+            EditorGUILayout.HelpBox("No Build report has been generated yet, please build this template first", MessageType.Info);
+        }
+        EditorGUILayout.EndScrollView();
+
     }
 
     void DrawProgressBar()
@@ -149,48 +164,55 @@ public class BuildFrontend : EditorWindow
         }
     }
 
-    Vector2 scrollPosition = Vector2.zero;
+    Vector2 templateScroll = Vector2.zero;
+    Vector2 reportScroll = Vector2.zero;
+    BuildReport m_SelectedReport;
 
     void DrawTemplateList()
     {
-        using (new GUILayout.ScrollViewScope(scrollPosition, false, true, GUILayout.Width(240)))
+        templateScroll = GUILayout.BeginScrollView(templateScroll, false, true, GUILayout.Width(240));
+        
+        using (new GUILayout.VerticalScope(EditorStyles.label))
         {
-            using (new GUILayout.VerticalScope(EditorStyles.label))
+            foreach (var catKVP in m_BuildTemplates)
             {
-                foreach (var catKVP in m_BuildTemplates)
+                EditorGUILayout.LabelField(catKVP.Key == string.Empty? "General": catKVP.Key, EditorStyles.boldLabel);
+
+                foreach (var template in catKVP.Value)
                 {
-                    EditorGUILayout.LabelField(catKVP.Key == string.Empty? "General": catKVP.Key, EditorStyles.boldLabel);
-
-                    foreach (var template in catKVP.Value)
+                    using (new GUILayout.HorizontalScope())
                     {
-                        using (new GUILayout.HorizontalScope())
+                        GUILayout.Space(16);
+
+                        template.BuildEnabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
+                        if(GUI.changed)
                         {
-                            GUILayout.Space(16);
+                            EditorUtility.SetDirty(template);
+                        }
 
-                            template.BuildEnabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
-                            if(GUI.changed)
+                        if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
+                        {
+                            if (Reports.ContainsKey(template) && Reports[template] != null)
                             {
-                                EditorUtility.SetDirty(template);
+                                m_SelectedReport = Reports[template]; 
+                            }
+                            else
+                            {
+                                m_SelectedReport = null;
+                                GUILayout.Label("Build has not been run yet");
                             }
 
-                            if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
-                            {
-                                if (Reports.ContainsKey(template) && Reports[template] != null)
-                                    FormatReportGUI(Reports[template]);
-                                else
-                                    GUILayout.Label("Build has not been run yet");
-
-                                CurrentTemplate = template;
-                                CurrentProfile = CurrentTemplate.Profile;
-                                CurrentSceneList = CurrentTemplate.SceneList;
-                                Selection.activeObject = template;
-                            }
+                            CurrentTemplate = template;
+                            CurrentProfile = CurrentTemplate.Profile;
+                            CurrentSceneList = CurrentTemplate.SceneList;
+                            Selection.activeObject = template;
                         }
                     }
-                    GUILayout.Space(16);
                 }
+                GUILayout.Space(16);
             }
         }
+        EditorGUILayout.EndScrollView();
     }
 
     void DropDownGUI()
