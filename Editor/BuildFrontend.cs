@@ -42,26 +42,32 @@ public class BuildFrontend : EditorWindow
             }
             using(new GUILayout.VerticalScope(GUILayout.Width(128)))
             {
-                GUILayout.Space(12);
-                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
+                GUILayout.Space(18);
+                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(24)))
                 {
                     // Run Build
                     DoAllBuild();
                 }
 
                 BuildTemplate template = (Selection.activeObject as BuildTemplate);
+                GUILayout.Space(16);
+                using (new GUILayout.HorizontalScope())
+                {
+                    EditorGUI.BeginDisabledGroup(template == null);
+                    if(GUILayout.Button("Build Selected", EditorStyles.miniButtonLeft))
+                    {
+                        var report = template.DoBuild();
+                        if(report != null)
+                            Reports[template] = report;
+                    }
+                    if(GUILayout.Button("+ Run", EditorStyles.miniButtonRight, GUILayout.Width(48)))
+                    {
+                        var report = template.DoBuild(true);
+                        if (report != null)
+                            Reports[template] = report;
+                    }
+                }
 
-                EditorGUI.BeginDisabledGroup(template == null);
-                if(GUILayout.Button("Build Selected", EditorStyles.miniButton, GUILayout.Height(16)))
-                {
-                    var report = template.DoBuild();
-                    if(report != null)
-                        Reports[template] = report;
-                }
-                if(GUILayout.Button("Run", EditorStyles.miniButton, GUILayout.Height(16)))
-                {
-                    template.Run();
-                }
                 EditorGUI.EndDisabledGroup();
             }
         }
