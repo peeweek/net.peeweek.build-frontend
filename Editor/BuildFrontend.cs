@@ -28,6 +28,8 @@ public class BuildFrontend : EditorWindow
 
     private void OnGUI()
     {
+        System.Action nextAction = null;
+
         using(new GUILayout.HorizontalScope(GUILayout.Height(88)))
         {
             var rect = GUILayoutUtility.GetRect(88,88, Styles.Icon, GUILayout.Width(88));
@@ -46,7 +48,7 @@ public class BuildFrontend : EditorWindow
                 if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(24)))
                 {
                     // Run Build
-                    DoAllBuild();
+                    nextAction = DoAllBuild;
                 }
 
                 BuildTemplate template = (Selection.activeObject as BuildTemplate);
@@ -54,23 +56,31 @@ public class BuildFrontend : EditorWindow
                 using (new GUILayout.HorizontalScope())
                 {
                     EditorGUI.BeginDisabledGroup(template == null);
-                    if(GUILayout.Button("Build Selected", EditorStyles.miniButtonLeft))
+                    if (GUILayout.Button("Build Selected", EditorStyles.miniButtonLeft))
                     {
-                        var report = template.DoBuild();
-                        if(report != null)
-                            Reports[template] = report;
+                        nextAction = () =>
+                        {
+                            var report = template.DoBuild();
+                            if (report != null)
+                                Reports[template] = report;
+                        };
                     }
                     if(GUILayout.Button("+ Run", EditorStyles.miniButtonRight, GUILayout.Width(48)))
                     {
-                        var report = template.DoBuild(true);
-                        if (report != null)
-                            Reports[template] = report;
+                        nextAction = () =>
+                        {
+                            var report = template.DoBuild(true);
+                            if (report != null)
+                                Reports[template] = report;
+                        };
                     }
                 }
 
                 EditorGUI.EndDisabledGroup();
             }
+
         }
+
         using(new GUILayout.HorizontalScope(EditorStyles.toolbar))
         {
             if(GUILayout.Button("Refresh", EditorStyles.toolbarButton))
@@ -85,6 +95,14 @@ public class BuildFrontend : EditorWindow
             DrawTemplateList();
             DrawReport();
         }
+
+        if (nextAction != null)
+        {
+            var selected = Selection.activeObject;
+            nextAction.Invoke();
+            Selection.activeObject = selected;
+        }
+
     }
 
     void DrawReport()
