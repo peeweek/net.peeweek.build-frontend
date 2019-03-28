@@ -416,39 +416,55 @@ public class BuildFrontend : EditorWindow
         var steps = report.steps;
         foreach(var step in steps)
         {
+            string prefName = $"BuildFrontend.Foldout'{step.name}'";
+
             EditorGUI.indentLevel++;
             using (new GUILayout.HorizontalScope())
             {
+                icon = Contents.successIcon.image;
+
                 if(step.messages.Any(o => o.type == LogType.Error))
                 {
-                    GUILayout.Label(Contents.errorIconSmall, GUILayout.Width(16));
+                    icon = Contents.errorIconSmall.image;
                 }
                 else if(step.messages.Any(o => o.type == LogType.Warning))
                 {
-                    GUILayout.Label(Contents.warnIconSmall, GUILayout.Width(16));
+                    icon = Contents.warnIconSmall.image;
                 }
 
-                GUILayout.Label(step.name, EditorStyles.foldout);
-            }
-            EditorGUI.indentLevel++;
-            foreach(var message in step.messages)
-            {
-                using (new GUILayout.HorizontalScope())
+                if(step.messages.Length > 0)
                 {
-                    GUILayout.Space(EditorGUI.indentLevel * 16);
-                    if (message.type == LogType.Log)
-                        GUILayout.Label(Contents.infoIconSmall, GUILayout.Width(16));
-                    else if (message.type == LogType.Warning)
-                        GUILayout.Label(Contents.warnIconSmall, GUILayout.Width(16));
-                    else
-                        GUILayout.Label(Contents.errorIconSmall, GUILayout.Width(16));
+                    bool pref = EditorPrefs.GetBool(prefName, false);
 
-                    GUILayout.Label(new GUIContent(message.type + " : " + message.content));
+                    bool newPref = EditorGUILayout.Foldout(pref, new GUIContent(step.name, icon));
+
+                    if (GUI.changed && pref != newPref)
+                        EditorPrefs.SetBool(prefName, newPref);
+                }
+                else
+                {
+                    EditorGUILayout.LabelField(step.name);
+                }
+
+            }
+
+            EditorGUI.indentLevel++;
+            if (EditorPrefs.GetBool(prefName, false))
+            {
+                foreach (var message in step.messages)
+                {
+                    MessageType type = MessageType.Error;
+                    if (message.type == LogType.Log)
+                        type = MessageType.Info;
+                    else if (message.type == LogType.Warning)
+                        type = MessageType.Warning;
+
+                    EditorGUILayout.HelpBox(message.content, type, true);
                 }
             }
             EditorGUI.indentLevel-= 2;
 
-            GUILayout.Space(8);
+            GUILayout.Space(2);
         }
         GUILayout.Space(128);
     }
@@ -508,6 +524,9 @@ public class BuildFrontend : EditorWindow
 
         public static GUIContent buildSucceeded = EditorGUIUtility.IconContent("Collab.BuildSucceeded");
         public static GUIContent buildFailed = EditorGUIUtility.IconContent("Collab.BuildFailed");
+
+        public static GUIContent successIcon = EditorGUIUtility.IconContent("Collab");
+        public static GUIContent failIcon = EditorGUIUtility.IconContent("CollabError");
 
         public static GUIContent errorIcon = EditorGUIUtility.IconContent("console.erroricon");
         public static GUIContent errorIconSmall = EditorGUIUtility.IconContent("console.erroricon.sml");
