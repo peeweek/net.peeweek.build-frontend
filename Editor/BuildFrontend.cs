@@ -1,4 +1,4 @@
-using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -347,17 +347,56 @@ public class BuildFrontend : EditorWindow
         CurrentTemplate.SceneList = CurrentSceneList;
     }
 
+    string FormatSize(ulong byteSize)
+    {
+        double size = byteSize;
+        if (size < 1024) // Bytes
+        {
+            return $"{size.ToString("F2")} bytes";
+        }
+        else if (size < 1024 * 1024) // KiloBytes
+        {
+            return $"{(size / 1024).ToString("F2")} KiB ({byteSize} bytes)";
+        }
+        else if (size < 1024 * 1024 * 1024) // Megabytes
+        {
+            return $"{(size / (1024*1024)).ToString("F2")} MiB ({byteSize} bytes)";
+        }
+        else // Gigabytes
+        {
+            return $"{(size / (1024 * 1024 * 1024)).ToString("F2")} GiB ({byteSize} bytes)";
+        }
+    }
+
     void FormatReportGUI(BuildReport report)
     {
-
         var summary = report.summary;
-        
-        GUILayout.Label(summary.result.ToString(), Styles.boldLabelLarge);
+        Texture icon;
+
+        using (new GUILayout.HorizontalScope())
+        {
+            if (summary.result == BuildResult.Succeeded)
+                GUILayout.Label(Contents.buildSucceeded, GUILayout.Width(32));
+            else if (summary.result != BuildResult.Unknown)
+                GUILayout.Label(Contents.buildFailed, GUILayout.Width(32));
+
+            GUILayout.Label(summary.result.ToString(), Styles.boldLabelLarge);
+        }
+
         GUILayout.Space(8);
         GUILayout.Label("Total Build Time :" + summary.totalTime);
-        EditorGUILayout.IntField("Build Size",(int)summary.totalSize);
-        EditorGUILayout.IntField("Errors",(int)summary.totalErrors);
-        EditorGUILayout.IntField("Warnings",(int)summary.totalWarnings);
+        EditorGUILayout.LabelField($"Build Size : {FormatSize(summary.totalSize)} ");
+
+        if(summary.totalErrors > 0)
+        {
+            GUILayout.Label(new GUIContent($"{(int)summary.totalErrors} Errors", Contents.errorIconSmall.image));
+        }
+
+        if(summary.totalWarnings > 0)
+        {
+            GUILayout.Label(new GUIContent($"{(int)summary.totalWarnings} Warnings", Contents.warnIconSmall.image));
+        }
+
         EditorGUILayout.TextField("Output Path", summary.outputPath);
         
         if(report.strippingInfo != null)
@@ -372,21 +411,46 @@ public class BuildFrontend : EditorWindow
             }
         }
 
-
-        GUILayout.Space(8);    
+        GUILayout.Space(8);
         GUILayout.Label("Build Steps", EditorStyles.boldLabel);
         var steps = report.steps;
         foreach(var step in steps)
         {
             EditorGUI.indentLevel++;
-            GUILayout.Label(step.name, EditorStyles.foldout);
+            using (new GUILayout.HorizontalScope())
+            {
+                if(step.messages.Any(o => o.type == LogType.Error))
+                {
+                    GUILayout.Label(Contents.errorIconSmall, GUILayout.Width(16));
+                }
+                else if(step.messages.Any(o => o.type == LogType.Warning))
+                {
+                    GUILayout.Label(Contents.warnIconSmall, GUILayout.Width(16));
+                }
+
+                GUILayout.Label(step.name, EditorStyles.foldout);
+            }
             EditorGUI.indentLevel++;
             foreach(var message in step.messages)
             {
-                EditorGUILayout.LabelField( message.type + " : " + message.content);
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.Space(EditorGUI.indentLevel * 16);
+                    if (message.type == LogType.Log)
+                        GUILayout.Label(Contents.infoIconSmall, GUILayout.Width(16));
+                    else if (message.type == LogType.Warning)
+                        GUILayout.Label(Contents.warnIconSmall, GUILayout.Width(16));
+                    else
+                        GUILayout.Label(Contents.errorIconSmall, GUILayout.Width(16));
+
+                    GUILayout.Label(new GUIContent(message.type + " : " + message.content));
+                }
             }
             EditorGUI.indentLevel-= 2;
+
+            GUILayout.Space(8);
         }
+        GUILayout.Space(128);
     }
 
     static class Styles
@@ -441,6 +505,18 @@ public class BuildFrontend : EditorWindow
         public static GUIContent profile = new GUIContent("Profile:");
         public static GUIContent sceneList = new GUIContent("Scene List:");
         public static Texture icon;
+
+        public static GUIContent buildSucceeded = EditorGUIUtility.IconContent("Collab.BuildSucceeded");
+        public static GUIContent buildFailed = EditorGUIUtility.IconContent("Collab.BuildFailed");
+
+        public static GUIContent errorIcon = EditorGUIUtility.IconContent("console.erroricon");
+        public static GUIContent errorIconSmall = EditorGUIUtility.IconContent("console.erroricon.sml");
+
+        public static GUIContent infoIcon = EditorGUIUtility.IconContent("console.infoicon");
+        public static GUIContent infoIconSmall = EditorGUIUtility.IconContent("console.infoicon.sml");
+
+        public static GUIContent warnIcon = EditorGUIUtility.IconContent("console.warnicon");
+        public static GUIContent warnIconSmall = EditorGUIUtility.IconContent("console.warnicon.sml");
 
         static Contents()
         {
