@@ -107,7 +107,7 @@ public class BuildFrontend : EditorWindow
 
     void DrawReport()
     {
-        reportScroll = EditorGUILayout.BeginScrollView(reportScroll);
+        reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
         if (m_SelectedReport != null)
         {
             FormatReportGUI(m_SelectedReport);
@@ -371,7 +371,6 @@ public class BuildFrontend : EditorWindow
     void FormatReportGUI(BuildReport report)
     {
         var summary = report.summary;
-        Texture icon;
 
         using (new GUILayout.HorizontalScope())
         {
@@ -418,25 +417,20 @@ public class BuildFrontend : EditorWindow
         {
             string prefName = $"BuildFrontend.Foldout'{step.name}'";
 
-            EditorGUI.indentLevel++;
             using (new GUILayout.HorizontalScope())
             {
-                icon = Contents.successIcon.image;
+                if (step.messages.Any(o => o.type == LogType.Error))
+                    GUILayout.Label(Contents.errorIcon, Styles.Icon,  GUILayout.Width(16));
+                else if (step.messages.Any(o => o.type == LogType.Warning))
+                    GUILayout.Label(Contents.warnIconSmall, Styles.Icon, GUILayout.Width(16));
+                else
+                    GUILayout.Label(Contents.successIcon, Styles.Icon, GUILayout.Width(16));
 
-                if(step.messages.Any(o => o.type == LogType.Error))
-                {
-                    icon = Contents.errorIconSmall.image;
-                }
-                else if(step.messages.Any(o => o.type == LogType.Warning))
-                {
-                    icon = Contents.warnIconSmall.image;
-                }
-
-                if(step.messages.Length > 0)
+                if (step.messages.Length > 0)
                 {
                     bool pref = EditorPrefs.GetBool(prefName, false);
 
-                    bool newPref = EditorGUILayout.Foldout(pref, new GUIContent(step.name, icon));
+                    bool newPref = EditorGUILayout.Foldout(pref, step.name);
 
                     if (GUI.changed && pref != newPref)
                         EditorPrefs.SetBool(prefName, newPref);
@@ -462,7 +456,7 @@ public class BuildFrontend : EditorWindow
                     EditorGUILayout.HelpBox(message.content, type, true);
                 }
             }
-            EditorGUI.indentLevel-= 2;
+            EditorGUI.indentLevel--;
 
             GUILayout.Space(2);
         }
@@ -477,6 +471,7 @@ public class BuildFrontend : EditorWindow
         public static GUIStyle Title;
         public static GUIStyle Icon;
         public static GUIStyle boldLabelLarge;
+        public static GUIStyle scrollView;
 
         static Styles()
         {
@@ -495,6 +490,9 @@ public class BuildFrontend : EditorWindow
 
             Icon = new GUIStyle(EditorStyles.label);
 
+            Icon.padding = new RectOffset();
+            Icon.margin = new RectOffset();
+
             progressBarItem = new GUIStyle(EditorStyles.miniLabel);
             progressBarItem.alignment = TextAnchor.MiddleCenter;
             progressBarItem.margin = new RectOffset(0,0,0,0);
@@ -510,7 +508,11 @@ public class BuildFrontend : EditorWindow
             progressBarItem.normal.background = Texture2D.whiteTexture;
             
             boldLabelLarge = new GUIStyle(EditorStyles.boldLabel);
-            boldLabelLarge.fontSize = 16;    
+            boldLabelLarge.fontSize = 16;
+
+            scrollView = new GUIStyle();
+            scrollView.padding = new RectOffset(8, 8, 8, 8);
+
         }
     }
     static class Contents
