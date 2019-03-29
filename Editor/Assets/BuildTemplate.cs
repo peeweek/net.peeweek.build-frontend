@@ -30,16 +30,28 @@ public class BuildTemplate : BuildFrontendAssetBase
 
         if (BuildEnabled)
         {
-            report = BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
-            if (run)
+            try
             {
-                if (
-                    report.summary.result == BuildResult.Succeeded ||
-                    EditorUtility.DisplayDialog("Run Failed Build", "The build has failed or has been canceled, do you want to attempt to run previous build instead?", "Yes", "No")
-                  )
+                EditorUtility.DisplayProgressBar("Build Frontend", $"Building player : {name}", 0.0f);
+                report = BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
+                if (run)
                 {
-                    RunBuild();
+                    if (
+                        report.summary.result == BuildResult.Succeeded ||
+                        EditorUtility.DisplayDialog("Run Failed Build", "The build has failed or has been canceled, do you want to attempt to run previous build instead?", "Yes", "No")
+                      )
+                    {
+                        RunBuild();
+                    }
                 }
+            }
+            catch(Exception e)
+            {
+
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
         else
@@ -58,7 +70,7 @@ public class BuildTemplate : BuildFrontendAssetBase
         info.WorkingDirectory = path;
         info.UseShellExecute = false;
 
-        Debug.Log($"Running Player : {info.FileName}");
+        EditorUtility.DisplayProgressBar("Build Frontend",$"Running Player : {info.FileName}", 1.0f);
 
         Process process = Process.Start(info);
         
