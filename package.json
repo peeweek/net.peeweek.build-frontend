@@ -1,7 +1,7 @@
 {
     "name": "net.peeweek.build-frontend",
     "displayName": "Build Frontend",
-    "version": "0.0.1",
+    "version": "1.0.0-preview",
     "unity": "2018.3",
     "description": "Build Frontend GUI"
 }
