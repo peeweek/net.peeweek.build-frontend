@@ -23,6 +23,7 @@ public class BuildFrontend : EditorWindow
         PopulateAssets();
     }
     
+    [SerializeField]
     Dictionary<BuildTemplate, BuildReport> Reports = new Dictionary<BuildTemplate, BuildReport>();
     string reportText = string.Empty;
 
@@ -63,6 +64,9 @@ public class BuildFrontend : EditorWindow
                             var report = template.DoBuild();
                             if (report != null)
                                 Reports[template] = report;
+
+                            m_SelectedReport = report;
+                            Repaint();
                         };
                     }
                     if(GUILayout.Button("+ Run", EditorStyles.miniButtonRight, GUILayout.Width(48)))
@@ -72,6 +76,9 @@ public class BuildFrontend : EditorWindow
                             var report = template.DoBuild(true);
                             if (report != null)
                                 Reports[template] = report;
+
+                            m_SelectedReport = report;
+                            Repaint();
                         };
                     }
                 }
@@ -110,7 +117,8 @@ public class BuildFrontend : EditorWindow
         reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
         if (m_SelectedReport != null)
         {
-            FormatReportGUI(m_SelectedReport);
+            var template = Reports.First(o => o.Value == m_SelectedReport).Key;
+            FormatReportGUI(template, m_SelectedReport);
         }
         else
         {
@@ -151,7 +159,6 @@ public class BuildFrontend : EditorWindow
                                 GUI.backgroundColor = new Color(.5f,.05f,.15f,1.0f);
                                 GUI.contentColor = new Color(1.0f,0.1f,0.3f, 1.0f);                                
                                 break;
-
                         }
 
                     }
@@ -177,8 +184,9 @@ public class BuildFrontend : EditorWindow
                     {
                         var Report = template.DoBuild();
                         Reports[template] = Report;
+                        m_SelectedReport = Report;
+                        Repaint();
                     }
-                    Repaint();
                 }
             }
         }
@@ -368,9 +376,12 @@ public class BuildFrontend : EditorWindow
         }
     }
 
-    void FormatReportGUI(BuildReport report)
+    void FormatReportGUI(BuildTemplate template, BuildReport report)
     {
         var summary = report.summary;
+
+        if(template != null)
+            GUILayout.Label($"{(template.Name == string.Empty? template.name : template.Name)} {(template.Category == string.Empty?"":$"({template.Category})")}", Styles.boldLabelLarge);
 
         using (new GUILayout.HorizontalScope())
         {
@@ -419,8 +430,8 @@ public class BuildFrontend : EditorWindow
 
             using (new GUILayout.HorizontalScope())
             {
-                if (step.messages.Any(o => o.type == LogType.Error))
-                    GUILayout.Label(Contents.errorIcon, Styles.Icon,  GUILayout.Width(16));
+                if (step.messages.Any(o => o.type == LogType.Error || o.type == LogType.Assert || o.type == LogType.Exception))
+                    GUILayout.Label(Contents.errorIconSmall, Styles.Icon,  GUILayout.Width(16));
                 else if (step.messages.Any(o => o.type == LogType.Warning))
                     GUILayout.Label(Contents.warnIconSmall, Styles.Icon, GUILayout.Width(16));
                 else

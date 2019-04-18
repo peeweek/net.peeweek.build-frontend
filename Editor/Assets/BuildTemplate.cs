@@ -12,6 +12,7 @@ public class BuildTemplate : BuildFrontendAssetBase
     [Header("Build Template")]
     public string BuildPath;
     public string ExecutableName;
+    public bool CleanupBeforeBuild = true;
 
     public BuildProfile Profile;
     public SceneList SceneList;
@@ -33,7 +34,20 @@ public class BuildTemplate : BuildFrontendAssetBase
             try
             {
                 EditorUtility.DisplayProgressBar("Build Frontend", $"Building player : {name}", 0.0f);
-                report = BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, BuildOptions.None);
+
+                BuildOptions options = BuildOptions.None;
+
+                if (Profile.DevPlayer)
+                    options |= BuildOptions.Development;
+
+                if(CleanupBeforeBuild && System.IO.Directory.Exists(BuildPath))
+                {
+                    EditorUtility.DisplayProgressBar("Build Frontend", $"Cleaning up folder : {BuildPath}", 0.05f);
+                    System.IO.Directory.Delete(BuildPath, true);
+                    System.IO.Directory.CreateDirectory(BuildPath);
+                }
+
+                report = BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, options);
                 if (run)
                 {
                     if (
@@ -47,7 +61,7 @@ public class BuildTemplate : BuildFrontendAssetBase
             }
             catch(Exception e)
             {
-
+                Debug.LogException(e, this);
             }
             finally
             {
