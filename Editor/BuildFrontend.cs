@@ -230,9 +230,11 @@ public class BuildFrontend : EditorWindow
                     {
                         GUILayout.Space(16);
 
-                        template.BuildEnabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
-                        if(GUI.changed)
+                        EditorGUI.BeginChangeCheck();
+                        var enabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
+                        if(EditorGUI.EndChangeCheck())
                         {
+                            template.BuildEnabled = enabled;
                             EditorUtility.SetDirty(template);
                         }
 
