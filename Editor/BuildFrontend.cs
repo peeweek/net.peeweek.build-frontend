@@ -45,15 +45,15 @@ public class BuildFrontend : EditorWindow
             }
             using(new GUILayout.VerticalScope(GUILayout.Width(128)))
             {
-                GUILayout.Space(18);
-                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(24)))
+                GUILayout.Space(8);
+                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
                 {
                     // Run Build
                     nextAction = DoAllBuild;
                 }
 
                 BuildTemplate template = (Selection.activeObject as BuildTemplate);
-                GUILayout.Space(16);
+                GUILayout.Space(6);
                 using (new GUILayout.HorizontalScope())
                 {
                     EditorGUI.BeginDisabledGroup(template == null);
@@ -84,7 +84,21 @@ public class BuildFrontend : EditorWindow
                 }
 
                 EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(template == null || !template.canRunBuild);
+                if (GUILayout.Button("Run Last Build", EditorStyles.miniButton))
+                {
+                    nextAction = () =>
+                    {
+                        template.RunBuild();
+                        EditorUtility.ClearProgressBar();
+                        Repaint();
+                    };
+                }
+                EditorGUI.EndDisabledGroup();
+
             }
+            GUILayout.Space(8);
 
         }
 

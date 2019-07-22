@@ -76,6 +76,14 @@ public class BuildTemplate : BuildFrontendAssetBase
         return report;
     }
 
+    public bool canRunBuild
+    {
+        get
+        {
+            return System.IO.File.Exists(Application.dataPath + "/../" + BuildPath + ExecutableName);
+        }
+    }
+
     public void RunBuild()
     {
         ProcessStartInfo info = new ProcessStartInfo();
