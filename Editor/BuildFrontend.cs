@@ -129,7 +129,7 @@ public class BuildFrontend : EditorWindow
     void DrawReport()
     {
         reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
-        if (m_SelectedReport != null)
+        if (m_SelectedReport != null && Reports != null && Reports.ContainsValue(m_SelectedReport))
         {
             var template = Reports.First(o => o.Value == m_SelectedReport).Key;
             FormatReportGUI(template, m_SelectedReport);
