@@ -226,6 +226,18 @@ public class BuildFrontend : EditorWindow
 
                 foreach (var template in catKVP.Value)
                 {
+                    // Draw Selected background box
+                    if(template == CurrentTemplate)
+                    {
+                        Rect r = GUILayoutUtility.GetLastRect();
+                        Vector2 pos = r.position;
+                        pos.y += 18;
+                        r.position = pos;
+                        r.height += 2;
+                        float gray = EditorGUIUtility.isProSkin? 1: 0;
+                        EditorGUI.DrawRect(r, new Color(gray, gray, gray, 0.1f));
+                    }
+
                     using (new GUILayout.HorizontalScope())
                     {
                         GUILayout.Space(16);
@@ -256,31 +268,13 @@ public class BuildFrontend : EditorWindow
                             Selection.activeObject = template;
                         }
                     }
+
+
                 }
                 GUILayout.Space(16);
             }
         }
         EditorGUILayout.EndScrollView();
-    }
-
-    void DropDownGUI()
-    {
-        GUILayout.Label(Contents.template, EditorStyles.toolbarButton);
-        if (GUILayout.Button(CurrentTemplate == null ? "(no template)" : CurrentTemplate.name, EditorStyles.toolbarPopup))
-            TemplateMenu.ShowAsContext();
-        GUILayout.Space(64);
-
-        if (CurrentTemplate != null)
-        {
-            GUILayout.Label(Contents.profile, EditorStyles.toolbarButton);
-            if (GUILayout.Button(CurrentProfile == null ? "(no profile)" : CurrentProfile.name, EditorStyles.toolbarPopup))
-                ProfileMenu.ShowAsContext();
-            GUILayout.Space(64);
-
-            GUILayout.Label(Contents.sceneList, EditorStyles.toolbarButton);
-            if (GUILayout.Button(CurrentSceneList == null ? "(no scenelist)" : CurrentSceneList.name, EditorStyles.toolbarPopup))
-                SceneListMenu.ShowAsContext();
-        }
     }
 
     [SerializeField]
