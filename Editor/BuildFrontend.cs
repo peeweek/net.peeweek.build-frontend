@@ -538,7 +538,7 @@ public class BuildFrontend : EditorWindow
     }
     static class Contents
     {
-        public static GUIContent title = new GUIContent("Build Frontend");
+        public static GUIContent title; 
         public static GUIContent build = new GUIContent("Build");
         public static GUIContent template = new GUIContent("Template:");
         public static GUIContent profile = new GUIContent("Profile:");
@@ -563,6 +563,8 @@ public class BuildFrontend : EditorWindow
         static Contents()
         {
             icon = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/BuildFrontend.png");
+            var titleIcon = AssetDatabase.LoadAssetAtPath<Texture>($"Packages/net.peeweek.build-frontend/Editor/Icons/BuildFrontendTab{(EditorGUIUtility.isProSkin?"":"Personal")}.png");
+            title = new GUIContent("Build Frontend", titleIcon);
         }
 
     }

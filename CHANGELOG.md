@@ -2,6 +2,10 @@
 
 ## 1.2.0-preview
 
+### Added
+
+* Added Icon for Window Tab
+
 ### Changed
 
 * Removed Build Enabled from serialization in assets, is now an Editor Preference.
