@@ -2,6 +2,8 @@
 
 ## 1.2.0-preview
 
+Minimal version is now 2019.3
+
 ### Added
 
 * Added Icon for Window Tab
@@ -9,6 +11,7 @@
 ### Changed
 
 * Removed Build Enabled from serialization in assets, is now an Editor Preference.
+* UI Fixes to match new Unity Skin
 
 ## 1.1.0-preview
 
