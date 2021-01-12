@@ -1,12 +1,13 @@
 # Changelog
 
-## 1.2.0-preview
+## 1.3.0-preview
 
 Minimal version is now 2019.3
 
 ### Added
 
 * Added Icon for Window Tab
+* Added Command line arguments for launch
 
 ### Changed
 
