@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using System;
 
 public class BuildFrontend : EditorWindow
 {
@@ -24,28 +25,29 @@ public class BuildFrontend : EditorWindow
     }
     
     [SerializeField]
-    Dictionary<BuildTemplate, BuildReport> Reports = new Dictionary<BuildTemplate, BuildReport>();
+    Dictionary<BuildTemplate, BuildReport> m_Reports = new Dictionary<BuildTemplate, BuildReport>();
     string reportText = string.Empty;
 
     private void OnGUI()
     {
         System.Action nextAction = null;
 
-        using(new GUILayout.HorizontalScope(GUILayout.Height(88)))
+        int iconSize = 48;
+
+        using (new GUILayout.HorizontalScope(GUILayout.Height(iconSize)))
         {
-            var rect = GUILayoutUtility.GetRect(88,88, Styles.Icon, GUILayout.Width(88));
+            var rect = GUILayoutUtility.GetRect(iconSize, iconSize, Styles.Icon, GUILayout.Width(iconSize));
             GUI.DrawTexture(rect, Contents.icon);
             using(new GUILayout.VerticalScope())
             {
                 GUILayout.Space(8);
                 GUILayout.Label(Contents.title, Styles.Title);
                 GUILayout.FlexibleSpace();
-                DrawProgressBar();
                 GUILayout.Space(8);
             }
             GUILayout.Space(8);
 
-            using (new GUILayout.VerticalScope(GUILayout.Width(116)))
+            using (new GUILayout.VerticalScope(GUILayout.Width(120)))
             {
                 GUILayout.Space(8);
                 if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
@@ -53,70 +55,21 @@ public class BuildFrontend : EditorWindow
                     // Run Build
                     nextAction = DoAllBuild;
                 }
-
-                BuildTemplate template = (Selection.activeObject as BuildTemplate);
-                GUILayout.Space(2);
-                using (new GUILayout.HorizontalScope())
-                {
-                    EditorGUI.BeginDisabledGroup(template == null);
-                    if (GUILayout.Button("Build Selected", Styles.MiniButtonLeft))
-                    {
-                        nextAction = () =>
-                        {
-                            var report = template.DoBuild();
-                            if (report != null)
-                                Reports[template] = report;
-
-                            m_SelectedReport = report;
-                            Repaint();
-                        };
-                    }
-                    if(GUILayout.Button("+ Run", Styles.MiniButtonRight, GUILayout.Width(48)))
-                    {
-                        nextAction = () =>
-                        {
-                            var report = template.DoBuild(true);
-                            if (report != null)
-                                Reports[template] = report;
-
-                            m_SelectedReport = report;
-                            Repaint();
-                        };
-                    }
-                }
-
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(template == null || !template.canRunBuild);
-                if (GUILayout.Button("Run Last Build", Styles.MiniButton))
-                {
-                    nextAction = () =>
-                    {
-                        template.RunBuild();
-                        EditorUtility.ClearProgressBar();
-                        Repaint();
-                    };
-                }
-                EditorGUI.EndDisabledGroup();
-
+                GUILayout.Space(8);
             }
             GUILayout.Space(8);
-
         }
 
-        using(new GUILayout.HorizontalScope(EditorStyles.toolbar))
-        {
-            if(GUILayout.Button("Refresh", EditorStyles.toolbarButton))
-            {
-                PopulateAssets();
-            }
-            GUILayout.FlexibleSpace();
-        }
+        var r = GUILayoutUtility.GetRect(-1, 1, GUILayout.ExpandWidth(true));
+        EditorGUI.DrawRect(r, Color.black);
 
         using (new GUILayout.HorizontalScope())
         {
             DrawTemplateList();
-            DrawReport();
+            if(nextAction != null) // If already Building All...
+                DrawReport();
+            else
+                nextAction = DrawReport();
         }
 
         if (nextAction != null)
@@ -128,63 +81,39 @@ public class BuildFrontend : EditorWindow
 
     }
 
-    void DrawReport()
+    Action DrawReport()
     {
+        if (selectedTemplate == null)
+        {
+            using(new GUILayout.VerticalScope())
+            {
+                GUILayout.FlexibleSpace();
+                using(new GUILayout.HorizontalScope(GUILayout.Height(32)))
+                {
+                    GUILayout.Space(180);
+                    EditorGUILayout.HelpBox("Please select a build template in the left pane list", MessageType.Info);
+                    GUILayout.Space(180);
+                }
+                GUILayout.FlexibleSpace();
+            }
+            return null;
+        }
+
+        BuildReport report = null;
+        if(m_Reports.ContainsKey(selectedTemplate))
+            report = m_Reports[selectedTemplate];
         reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
-        if (m_SelectedReport != null && Reports != null && Reports.ContainsValue(m_SelectedReport))
-        {
-            var template = Reports.First(o => o.Value == m_SelectedReport).Key;
-            FormatReportGUI(template, m_SelectedReport);
-        }
+
+        var nextAction = FormatHeaderGUI(selectedTemplate, report);
+
+        if (report != null)
+            FormatReportGUI(selectedTemplate, report);
         else
-        {
             EditorGUILayout.HelpBox("No Build report has been generated yet, please build this template first", MessageType.Info);
-        }
+
         EditorGUILayout.EndScrollView();
 
-    }
-
-    void DrawProgressBar()
-    {
-        GUI.backgroundColor = Color.gray;
-        using(new GUILayout.HorizontalScope(Styles.progressBarItem, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
-        {
-            foreach(var cat in m_BuildTemplates)
-            {
-                foreach(var template in cat.Value)
-                {
-                    GUI.backgroundColor = new Color(.3f,.3f,.3f,1.0f);
-                    GUI.contentColor = Color.white;
-                    if(!template.BuildEnabled)
-                    {
-                        GUI.backgroundColor = new Color(.4f,.4f,.4f,1.0f);
-                        GUI.contentColor = new Color(1.0f,1.0f,1.0f, 0.5f);
-                    }
-                    else if(Reports.ContainsKey(template) && Reports[template] != null)
-                    {
-                        var report = Reports[template];
-                        switch(report.summary.result)
-                        {
-                            case BuildResult.Succeeded:
-                                GUI.backgroundColor = new Color(.15f,.5f,.05f,1.0f);
-                                GUI.contentColor = new Color(0.3f,1.0f,0.1f, 1.0f);                                
-                                break;
-                            case BuildResult.Cancelled:
-                            case BuildResult.Unknown:
-                            case BuildResult.Failed:
-                                GUI.backgroundColor = new Color(.5f,.05f,.15f,1.0f);
-                                GUI.contentColor = new Color(1.0f,0.1f,0.3f, 1.0f);                                
-                                break;
-                        }
-
-                    }
-                
-                    GUILayout.Label(template.name, Styles.progressBarItem, GUILayout.ExpandHeight(true));
-                }
-            }
-        }
-        GUI.contentColor = Color.white;
-        GUI.backgroundColor = Color.white;    
+        return nextAction;
     }
 
     void DoAllBuild()
@@ -199,8 +128,6 @@ public class BuildFrontend : EditorWindow
                     if(template.BuildEnabled)
                     {
                         var Report = template.DoBuild();
-                        Reports[template] = Report;
-                        m_SelectedReport = Report;
                         Repaint();
                     }
                 }
@@ -214,7 +141,6 @@ public class BuildFrontend : EditorWindow
 
     Vector2 templateScroll = Vector2.zero;
     Vector2 reportScroll = Vector2.zero;
-    BuildReport m_SelectedReport;
 
     void DrawTemplateList()
     {
@@ -229,7 +155,7 @@ public class BuildFrontend : EditorWindow
                 foreach (var template in catKVP.Value)
                 {
                     // Draw Selected background box
-                    if(template == CurrentTemplate)
+                    if(template == selectedTemplate)
                     {
                         Rect r = GUILayoutUtility.GetLastRect();
                         Vector2 pos = r.position;
@@ -252,26 +178,12 @@ public class BuildFrontend : EditorWindow
                             EditorUtility.SetDirty(template);
                         }
 
-                        if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == CurrentTemplate? Styles.SelectedProfile : EditorStyles.label))
+                        if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == selectedTemplate? Styles.SelectedProfile : EditorStyles.label))
                         {
-                            if (Reports.ContainsKey(template) && Reports[template] != null)
-                            {
-                                m_SelectedReport = Reports[template]; 
-                            }
-                            else
-                            {
-                                m_SelectedReport = null;
-                                GUILayout.Label("Build has not been run yet");
-                            }
-
-                            CurrentTemplate = template;
-                            CurrentProfile = CurrentTemplate.Profile;
-                            CurrentSceneList = CurrentTemplate.SceneList;
-                            Selection.activeObject = template;
+                            selectedTemplate = template;
+                            Selection.activeObject = selectedTemplate;
                         }
                     }
-
-
                 }
                 GUILayout.Space(16);
             }
@@ -280,15 +192,9 @@ public class BuildFrontend : EditorWindow
     }
 
     [SerializeField]
-    BuildTemplate CurrentTemplate;
-    [SerializeField]
-    BuildProfile CurrentProfile;
-    [SerializeField]
-    SceneList CurrentSceneList;
-
-    GenericMenu TemplateMenu;
-    GenericMenu ProfileMenu;
-    GenericMenu SceneListMenu;
+    BuildTemplate selectedTemplate;
+    BuildProfile currentProfile => selectedTemplate?.Profile;
+    SceneList currentSceneList => selectedTemplate?.SceneList;
 
     Dictionary<string, List<BuildTemplate>> m_BuildTemplates;
     List<BuildProfile> m_BuildProfiles;
@@ -304,7 +210,7 @@ public class BuildFrontend : EditorWindow
         m_BuildProfiles = new List<BuildProfile>();
         m_SceneLists = new List<SceneList>();
 
-        TemplateMenu = new GenericMenu();
+
         foreach (var templateGUID in buildTemplates)
         {
             string templatePath = AssetDatabase.GUIDToAssetPath(templateGUID);
@@ -313,58 +219,22 @@ public class BuildFrontend : EditorWindow
                 m_BuildTemplates.Add(template.Category, new List<BuildTemplate>());
 
             m_BuildTemplates[template.Category].Add(template);
-
-            TemplateMenu.AddItem(new GUIContent(template.MenuEntry), false, MenuSetTemplate, template);
         }
 
-        ProfileMenu = new GenericMenu();
+
         foreach (var profileGUID in buildProfiles)
         {
             string profilePath = AssetDatabase.GUIDToAssetPath(profileGUID);
             BuildProfile profile = (BuildProfile)AssetDatabase.LoadAssetAtPath(profilePath, typeof(BuildProfile));
             m_BuildProfiles.Add(profile);
-            ProfileMenu.AddItem(new GUIContent(profile.MenuEntry), false, MenuSetProfile, profile);
         }
 
-        SceneListMenu = new GenericMenu();
         foreach (var sceneListGUID in sceneLists)
         {
             string sceneListPath = AssetDatabase.GUIDToAssetPath(sceneListGUID);
             SceneList sceneList = (SceneList)AssetDatabase.LoadAssetAtPath(sceneListPath, typeof(SceneList));
             m_SceneLists.Add(sceneList);
-            SceneListMenu.AddItem(new GUIContent(sceneList.MenuEntry), false, MenuSetSceneList, sceneList);
         }
-    }
-
-    void MenuSetTemplate(object o)
-    {
-        CurrentTemplate = (BuildTemplate)o;
-        CurrentProfile = CurrentTemplate.Profile;
-        CurrentSceneList = CurrentTemplate.SceneList;
-    }
-
-    void MenuSetProfile(object o)
-    {
-        CurrentProfile = (BuildProfile)o;
-        if(CurrentTemplate != null && !CurrentTemplate.name.EndsWith("*"))
-        {
-            CurrentTemplate = Instantiate<BuildTemplate>(CurrentTemplate) as BuildTemplate;
-            CurrentTemplate.name += "*";
-        }
-
-        CurrentTemplate.Profile = CurrentProfile;
-    }
-
-    void MenuSetSceneList(object o)
-    {
-        CurrentSceneList = (SceneList)o;
-        if (CurrentTemplate != null && !CurrentTemplate.name.EndsWith("*"))
-        {
-            CurrentTemplate = Instantiate<BuildTemplate>(CurrentTemplate) as BuildTemplate;
-            CurrentTemplate.name += "*";
-        }
-
-        CurrentTemplate.SceneList = CurrentSceneList;
     }
 
     string FormatSize(ulong byteSize)
@@ -388,22 +258,99 @@ public class BuildFrontend : EditorWindow
         }
     }
 
-    void FormatReportGUI(BuildTemplate template, BuildReport report)
+    Action FormatHeaderGUI(BuildTemplate template, BuildReport report = null)
     {
-        var summary = report.summary;
-
-        if(template != null)
-            GUILayout.Label($"{(template.Name == string.Empty? template.name : template.Name)} {(template.Category == string.Empty?"":$"({template.Category})")}", Styles.boldLabelLarge);
+        Action nextAction = null;
 
         using (new GUILayout.HorizontalScope())
         {
-            if (summary.result == BuildResult.Succeeded)
-                GUILayout.Label(Contents.buildSucceeded, GUILayout.Width(32));
-            else if (summary.result != BuildResult.Unknown)
-                GUILayout.Label(Contents.buildFailed, GUILayout.Width(32));
+            using(new GUILayout.VerticalScope())
+            {
+                GUILayout.Label($"{(template.Name == string.Empty ? template.name : template.Name)} {(template.Category == string.Empty ? "" : $"({template.Category})")}", Styles.boldLabelLarge);
 
-            GUILayout.Label(summary.result.ToString(), Styles.boldLabelLarge);
+                using (new GUILayout.HorizontalScope())
+                {
+                    if (report != null)
+                    {
+                        var summary = report.summary;
+                        if (summary.result == BuildResult.Succeeded)
+                            GUILayout.Label(Contents.buildSucceeded, GUILayout.Width(32));
+                        else if (summary.result != BuildResult.Unknown)
+                            GUILayout.Label(Contents.buildFailed, GUILayout.Width(32));
+
+                        GUILayout.Label(summary.result.ToString(), Styles.boldLabelLarge);
+                    }
+                    else
+                    {
+                        GUILayout.Label(Contents.buildPending, GUILayout.Width(32));
+                        GUILayout.Label("Build not yet started", Styles.boldLabelLarge);
+                    }
+                }
+            }
+
+            GUILayout.FlexibleSpace();
+
+
+            using (new GUILayout.VerticalScope(GUILayout.Width(120)))
+            {
+                using (new GUILayout.HorizontalScope())
+                {
+                    EditorGUI.BeginDisabledGroup(template == null);
+
+                    if (GUILayout.Button("Build", Styles.MiniButtonLeft))
+                    {
+                        nextAction = () =>
+                        {
+                            var report = template.DoBuild();
+                            if (report != null)
+                                m_Reports[template] = report;
+
+                            selectedTemplate = template;
+                            Repaint();
+                        };
+                    }
+                    if (GUILayout.Button("+ Run", Styles.MiniButtonRight, GUILayout.Width(48)))
+                    {
+                        nextAction = () =>
+                        {
+                            var report = template.DoBuild(true);
+                            if (report != null)
+                                m_Reports[template] = report;
+
+                            selectedTemplate = template;
+                            Repaint();
+                        };
+                    }
+                    EditorGUI.EndDisabledGroup();
+                }
+
+                EditorGUI.BeginDisabledGroup(template == null || !template.canRunBuild);
+                if (GUILayout.Button("Run Last Build", Styles.MiniButton))
+                {
+                    nextAction = () =>
+                    {
+                        template.RunBuild();
+                        EditorUtility.ClearProgressBar();
+                        Repaint();
+                    };
+                }
+                EditorGUI.EndDisabledGroup();
+            }
+
         }
+
+        GUILayout.Space(8);
+        var r = GUILayoutUtility.GetRect(-1, 1, GUILayout.ExpandWidth(true));
+        EditorGUI.DrawRect(r, new Color(0, 0, 0, 0.5f));
+        GUILayout.Space(16);
+
+        return nextAction;
+    }
+
+
+    void FormatReportGUI(BuildTemplate template, BuildReport report)
+    {
+        var summary = report.summary;
 
         GUILayout.Space(8);
         GUILayout.Label("Total Build Time :" + summary.totalTime);
@@ -503,16 +450,20 @@ public class BuildFrontend : EditorWindow
         {
             BuildButton = new GUIStyle(EditorStyles.miniButton);
             BuildButton.fontSize = 14;
+            BuildButton.fontStyle = FontStyle.Bold;
             BuildButton.fixedHeight = 32;
 
             MiniButton = new GUIStyle(EditorStyles.miniButton);
-            MiniButton.fontSize = 10;
+            MiniButton.fixedHeight = 22;
+            MiniButton.fontSize = 12;
 
             MiniButtonLeft = new GUIStyle(EditorStyles.miniButtonLeft);
-            MiniButtonLeft.fontSize = 10;
+            MiniButtonLeft.fixedHeight = 22;
+            MiniButtonLeft.fontSize = 12;
 
             MiniButtonRight = new GUIStyle(EditorStyles.miniButtonRight);
-            MiniButtonRight.fontSize = 10;
+            MiniButtonRight.fixedHeight = 22;
+            MiniButtonRight.fontSize = 12;
 
 
             SelectedProfile = new GUIStyle(EditorStyles.label);
@@ -564,6 +515,7 @@ public class BuildFrontend : EditorWindow
 
         public static GUIContent buildSucceeded = EditorGUIUtility.IconContent("Collab.BuildSucceeded");
         public static GUIContent buildFailed = EditorGUIUtility.IconContent("Collab.BuildFailed");
+        public static GUIContent buildPending = EditorGUIUtility.IconContent("Collab.Build");
 
         public static GUIContent successIcon = EditorGUIUtility.IconContent("Collab");
         public static GUIContent failIcon = EditorGUIUtility.IconContent("CollabError");
