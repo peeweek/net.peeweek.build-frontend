@@ -154,38 +154,83 @@ public class BuildFrontend : EditorWindow
 
                 foreach (var template in catKVP.Value)
                 {
-                    // Draw Selected background box
-                    if(template == selectedTemplate)
+                    GUILayoutUtility.GetRect(-1, 24, GUILayout.ExpandWidth(true));
+
+                    // Draw background box
+
+                    Rect r = GUILayoutUtility.GetLastRect();
+                    Vector2 pos = r.position;
+
+                    r.position = pos;
+                    r.height = 22;
+
+                    Rect buttonRect = r;
+                    buttonRect.xMin += 24;
+                    buttonRect.height = 24;
+
+                    if (GUI.Button(buttonRect, GUIContent.none, Styles.hoverBG))
                     {
-                        Rect r = GUILayoutUtility.GetLastRect();
-                        Vector2 pos = r.position;
-                        pos.y += 18;
-                        r.position = pos;
-                        r.height += 2;
-                        float gray = EditorGUIUtility.isProSkin? 1: 0;
+                        selectedTemplate = template;
+                        Selection.activeObject = selectedTemplate;
+                    }
+
+                    if (template == selectedTemplate)
+                    {
+                        float gray = EditorGUIUtility.isProSkin ? 1 : 0;
                         EditorGUI.DrawRect(r, new Color(gray, gray, gray, 0.1f));
                     }
 
-                    using (new GUILayout.HorizontalScope())
+
+                    Rect toggleRect = r;
+                    toggleRect.xMin += 4;
+                    toggleRect.width = 24;
+
+                    EditorGUI.BeginChangeCheck();
+                    var enabled = GUI.Toggle(toggleRect, template.BuildEnabled, GUIContent.none);
+                    if (EditorGUI.EndChangeCheck())
                     {
-                        GUILayout.Space(16);
+                        template.BuildEnabled = enabled;
+                        EditorUtility.SetDirty(template);
+                    }
 
-                        EditorGUI.BeginChangeCheck();
-                        var enabled = GUILayout.Toggle(template.BuildEnabled,GUIContent.none, GUILayout.Width(24));
-                        if(EditorGUI.EndChangeCheck())
+                    Rect iconRect = r;
+                    iconRect.xMin += 24;
+                    iconRect.yMin += 2;
+                    iconRect.width = 18;
+                    iconRect.height = 18;
+                    Texture icon = Contents.iconGray;
+                    if(m_Reports != null && m_Reports.ContainsKey(template))
+                    {
+                        var summary = m_Reports[template].summary;
+                        var result = summary.result;
+                        switch (result)
                         {
-                            template.BuildEnabled = enabled;
-                            EditorUtility.SetDirty(template);
-                        }
-
-                        if (GUILayout.Button(template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == selectedTemplate? Styles.SelectedProfile : EditorStyles.label))
-                        {
-                            selectedTemplate = template;
-                            Selection.activeObject = selectedTemplate;
+                            default:
+                            case BuildResult.Unknown:
+                                icon = Contents.iconGray;
+                                break;
+                            case BuildResult.Succeeded:
+                                if (summary.totalWarnings == 0)
+                                    icon = Contents.iconGreen;
+                                else
+                                    icon = Contents.iconOrange;
+                                break;
+                            case BuildResult.Cancelled:
+                            case BuildResult.Failed:
+                                icon = Contents.iconRed;
+                                break;
                         }
                     }
+
+                    GUI.DrawTexture(iconRect, icon);
+
+
+                    Rect labelRect = r;
+                    labelRect.xMin += 48;
+
+                    GUI.Label(labelRect, template.Name != null && template.Name != string.Empty ? template.Name : template.name, template == selectedTemplate ? EditorStyles.boldLabel : EditorStyles.label);
+
                 }
-                GUILayout.Space(16);
             }
         }
         EditorGUILayout.EndScrollView();
@@ -325,6 +370,7 @@ public class BuildFrontend : EditorWindow
                 }
 
                 EditorGUI.BeginDisabledGroup(template == null || !template.canRunBuild);
+
                 if (GUILayout.Button("Run Last Build", Styles.MiniButton))
                 {
                     nextAction = () =>
@@ -445,6 +491,8 @@ public class BuildFrontend : EditorWindow
         public static GUIStyle Icon;
         public static GUIStyle boldLabelLarge;
         public static GUIStyle scrollView;
+        public static GUIStyle hoverBG;
+
 
         static Styles()
         {
@@ -465,9 +513,8 @@ public class BuildFrontend : EditorWindow
             MiniButtonRight.fixedHeight = 22;
             MiniButtonRight.fontSize = 12;
 
-
             SelectedProfile = new GUIStyle(EditorStyles.label);
-            var pink = EditorGUIUtility.isProSkin? new Color(1.0f, 0.2f, 0.5f, 1.0f) : new Color(1.0f, 0.05f, 0.4f, 1.0f);
+            var pink = EditorGUIUtility.isProSkin ? new Color(1.0f, 0.2f, 0.5f, 1.0f) : new Color(1.0f, 0.05f, 0.4f, 1.0f);
             SelectedProfile.active.textColor = pink;
             SelectedProfile.focused.textColor = pink;
             SelectedProfile.hover.textColor = pink;
@@ -483,8 +530,8 @@ public class BuildFrontend : EditorWindow
 
             progressBarItem = new GUIStyle(EditorStyles.miniLabel);
             progressBarItem.alignment = TextAnchor.MiddleCenter;
-            progressBarItem.margin = new RectOffset(0,0,0,0);
-            progressBarItem.padding = new RectOffset(0,0,0,0);
+            progressBarItem.margin = new RectOffset(0, 0, 0, 0);
+            progressBarItem.padding = new RectOffset(0, 0, 0, 0);
             progressBarItem.wordWrap = true;
             progressBarItem.onActive.background = Texture2D.whiteTexture;
             progressBarItem.onFocused.background = Texture2D.whiteTexture;
@@ -494,14 +541,21 @@ public class BuildFrontend : EditorWindow
             progressBarItem.focused.background = Texture2D.whiteTexture;
             progressBarItem.hover.background = Texture2D.whiteTexture;
             progressBarItem.normal.background = Texture2D.whiteTexture;
-            
+
             boldLabelLarge = new GUIStyle(EditorStyles.boldLabel);
             boldLabelLarge.fontSize = 16;
 
             scrollView = new GUIStyle();
             scrollView.padding = new RectOffset(8, 8, 8, 8);
 
+            hoverBG = new GUIStyle(EditorStyles.foldoutHeader);
+            hoverBG.padding = new RectOffset(0, 0, 0, 0);
+            hoverBG.margin = new RectOffset(0, 0, 0, 0);
+            hoverBG.fixedHeight = 22;
+
+
         }
+        
     }
     static class Contents
     {
@@ -529,12 +583,22 @@ public class BuildFrontend : EditorWindow
         public static GUIContent warnIcon = EditorGUIUtility.IconContent("console.warnicon");
         public static GUIContent warnIconSmall = EditorGUIUtility.IconContent("console.warnicon.sml");
 
+
+        public static Texture iconGray;
+        public static Texture iconGreen;
+        public static Texture iconOrange;
+        public static Texture iconRed;
         static Contents()
         {
             icon = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/BuildFrontend.png");
             var titleIcon = AssetDatabase.LoadAssetAtPath<Texture>($"Packages/net.peeweek.build-frontend/Editor/Icons/BuildFrontendTab{(EditorGUIUtility.isProSkin?"":"Personal")}.png");
             windowTitle = new GUIContent("Build Frontend", titleIcon);
             title = new GUIContent("Build Frontend");
+
+            iconGray = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-NotRun.png");
+            iconGreen = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Green.png");
+            iconOrange = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Warning.png");
+            iconRed = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Failed.png");
         }
 
     }
