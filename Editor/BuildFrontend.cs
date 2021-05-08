@@ -20,29 +20,43 @@ public class BuildFrontend : EditorWindow
 
     private void OnEnable()
     {
-        titleContent = Contents.windowTitle;
+        titleContent = Contents.windowTitle; 
+        m_CurrentLog = "Ready to build!";
         PopulateAssets();
     }
+
+    string m_CurrentLog = "Ready to build!";
     
+
+
     [SerializeField]
     Dictionary<BuildTemplate, BuildReport> m_Reports = new Dictionary<BuildTemplate, BuildReport>();
     string reportText = string.Empty;
 
-    private void OnGUI()
-    {
-        System.Action nextAction = null;
 
+    Queue<Action> m_Actions;
+
+    void EnqueueAction(Action action)
+    {
+        if (m_Actions == null)
+            m_Actions = new Queue<Action>();
+
+        m_Actions.Enqueue(action);
+    }
+
+    void OnWindowGUI()
+    {
         int iconSize = 48;
 
         using (new GUILayout.HorizontalScope(GUILayout.Height(iconSize)))
         {
             var rect = GUILayoutUtility.GetRect(iconSize, iconSize, Styles.Icon, GUILayout.Width(iconSize));
             GUI.DrawTexture(rect, Contents.icon);
-            using(new GUILayout.VerticalScope())
+            using (new GUILayout.VerticalScope())
             {
                 GUILayout.Space(8);
                 GUILayout.Label(Contents.title, Styles.Title);
-                GUILayout.FlexibleSpace();
+                GUILayout.Label(m_CurrentLog);
                 GUILayout.Space(8);
             }
             GUILayout.Space(8);
@@ -50,10 +64,9 @@ public class BuildFrontend : EditorWindow
             using (new GUILayout.VerticalScope(GUILayout.Width(120)))
             {
                 GUILayout.Space(8);
-                if(GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
+                if (GUILayout.Button("Build All", Styles.BuildButton, GUILayout.Height(32)))
                 {
-                    // Run Build
-                    nextAction = DoAllBuild;
+                    DoAllBuild();
                 }
                 GUILayout.Space(8);
             }
@@ -66,22 +79,42 @@ public class BuildFrontend : EditorWindow
         using (new GUILayout.HorizontalScope())
         {
             DrawTemplateList();
-            if(nextAction != null) // If already Building All...
-                DrawReport();
-            else
-                nextAction = DrawReport();
+            DrawReport();
         }
-
-        if (nextAction != null)
-        {
-            var selected = Selection.activeObject;
-            nextAction.Invoke();
-            Selection.activeObject = selected;
-        }
-
     }
 
-    Action DrawReport()
+    BuildTemplate m_CurrentBuild;
+
+    private void OnGUI()
+    {
+        if (m_Actions == null)
+            m_Actions = new Queue<Action>();
+
+        Action nextAction = m_Actions.Count == 0? null : m_Actions.Dequeue();
+
+        try
+        {
+            OnWindowGUI();
+        }
+        finally
+        {
+            if (nextAction != null)
+            {
+                var selected = Selection.activeObject;
+                try
+                {
+                    nextAction.Invoke();
+                }
+                finally
+                {
+                    Selection.activeObject = selected;
+                }
+
+            }
+        }
+    }
+
+    void DrawReport()
     {
         if (selectedTemplate == null)
         {
@@ -96,7 +129,7 @@ public class BuildFrontend : EditorWindow
                 }
                 GUILayout.FlexibleSpace();
             }
-            return null;
+            return;
         }
 
         BuildReport report = null;
@@ -104,7 +137,7 @@ public class BuildFrontend : EditorWindow
             report = m_Reports[selectedTemplate];
         reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
 
-        var nextAction = FormatHeaderGUI(selectedTemplate, report);
+        FormatHeaderGUI(selectedTemplate, report);
 
         if (report != null)
             FormatReportGUI(selectedTemplate, report);
@@ -113,30 +146,30 @@ public class BuildFrontend : EditorWindow
 
         EditorGUILayout.EndScrollView();
 
-        return nextAction;
+        return;
     }
 
     void DoAllBuild()
     {
-        try
+        foreach(var cat in m_BuildTemplates)
         {
-            foreach(var cat in m_BuildTemplates)
+            foreach(var template in cat.Value)
             {
-                foreach(var template in cat.Value)
+                EditorUtility.DisplayProgressBar("Build Frontend", $"Building {template.name} ...", 1.0f);
+                if(template.BuildEnabled)
                 {
-                    EditorUtility.DisplayProgressBar("Build Frontend", $"Building {template.name} ...", 1.0f);
-                    if(template.BuildEnabled)
-                    {
-                        var Report = template.DoBuild();
-                        Repaint();
-                    }
+                    EnqueueBuildTemplate(template, false);
                 }
             }
         }
-        finally
+
+        // Finally...
+        EnqueueAction(() =>
         {
-            EditorUtility.ClearProgressBar();
-        }
+            m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Finished Building All Templates";
+            Repaint();
+        });
+
     }
 
     Vector2 templateScroll = Vector2.zero;
@@ -199,7 +232,11 @@ public class BuildFrontend : EditorWindow
                     iconRect.width = 18;
                     iconRect.height = 18;
                     Texture icon = Contents.iconGray;
-                    if(m_Reports != null && m_Reports.ContainsKey(template))
+                    if(m_CurrentBuild != null && m_CurrentBuild == template)
+                    {
+                        icon = Contents.iconBlue;
+                    }
+                    else if(m_Reports != null && m_Reports.ContainsKey(template))
                     {
                         var summary = m_Reports[template].summary;
                         var result = summary.result;
@@ -303,10 +340,8 @@ public class BuildFrontend : EditorWindow
         }
     }
 
-    Action FormatHeaderGUI(BuildTemplate template, BuildReport report = null)
+    void FormatHeaderGUI(BuildTemplate template, BuildReport report = null)
     {
-        Action nextAction = null;
-
         using (new GUILayout.HorizontalScope())
         {
             using(new GUILayout.VerticalScope())
@@ -344,27 +379,11 @@ public class BuildFrontend : EditorWindow
 
                     if (GUILayout.Button("Build", Styles.MiniButtonLeft))
                     {
-                        nextAction = () =>
-                        {
-                            var report = template.DoBuild();
-                            if (report != null)
-                                m_Reports[template] = report;
-
-                            selectedTemplate = template;
-                            Repaint();
-                        };
+                        EnqueueBuildTemplate(template, false);
                     }
                     if (GUILayout.Button("+ Run", Styles.MiniButtonRight, GUILayout.Width(48)))
                     {
-                        nextAction = () =>
-                        {
-                            var report = template.DoBuild(true);
-                            if (report != null)
-                                m_Reports[template] = report;
-
-                            selectedTemplate = template;
-                            Repaint();
-                        };
+                        EnqueueBuildTemplate(template, true);
                     }
                     EditorGUI.EndDisabledGroup();
                 }
@@ -373,12 +392,12 @@ public class BuildFrontend : EditorWindow
 
                 if (GUILayout.Button("Run Last Build", Styles.MiniButton))
                 {
-                    nextAction = () =>
+                    EnqueueAction(() =>
                     {
                         template.RunBuild();
-                        EditorUtility.ClearProgressBar();
+                        m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Started running template: {template.name} ...";
                         Repaint();
-                    };
+                    });
                 }
                 EditorGUI.EndDisabledGroup();
             }
@@ -390,8 +409,36 @@ public class BuildFrontend : EditorWindow
         EditorGUI.DrawRect(r, new Color(0, 0, 0, 0.5f));
         GUILayout.Space(16);
 
-        return nextAction;
+        return;
     }
+
+    void EnqueueBuildTemplate(BuildTemplate template, bool runAfterBuild=false)
+    {
+        EnqueueAction(() =>
+        {
+            m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Started Building Template : {template.name} ...";
+            m_CurrentBuild = template;
+        });
+
+        EnqueueAction(() => { Repaint(); });
+
+        EnqueueAction(() =>
+        {
+            var report = template.DoBuild(runAfterBuild);
+            if (report != null)
+                m_Reports[template] = report;
+        });
+
+        EnqueueAction(() =>
+        {
+            m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Finished Building Template : {template.name} ...";
+            m_CurrentBuild = null;
+            selectedTemplate = template;
+        });
+
+        EnqueueAction(() => { Repaint(); });
+    }
+
 
 
     void FormatReportGUI(BuildTemplate template, BuildReport report)
@@ -585,6 +632,7 @@ public class BuildFrontend : EditorWindow
 
 
         public static Texture iconGray;
+        public static Texture iconBlue;
         public static Texture iconGreen;
         public static Texture iconOrange;
         public static Texture iconRed;
@@ -596,6 +644,7 @@ public class BuildFrontend : EditorWindow
             title = new GUIContent("Build Frontend");
 
             iconGray = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-NotRun.png");
+            iconBlue = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Running.png");
             iconGreen = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Green.png");
             iconOrange = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Warning.png");
             iconRed = AssetDatabase.LoadAssetAtPath<Texture>("Packages/net.peeweek.build-frontend/Editor/Icons/Icons-Failed.png");

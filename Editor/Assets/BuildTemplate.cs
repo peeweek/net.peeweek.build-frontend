@@ -96,16 +96,36 @@ public class BuildTemplate : BuildFrontendAssetBase
 
     public void RunBuild()
     {
-        ProcessStartInfo info = new ProcessStartInfo();
-        string path = Application.dataPath + "/../" + BuildPath;
-        info.FileName = path + ExecutableName;
-        info.Arguments = RunWithArguments;
-        info.WorkingDirectory = path;
-        info.UseShellExecute = false;
 
-        EditorUtility.DisplayProgressBar("Build Frontend",$"Running Player : {info.FileName}", 1.0f);
+#if UNITY_EDITOR_WIN
+        bool canRun = (Profile != null && (Profile.Target == BuildTarget.StandaloneWindows64 || Profile.Target == BuildTarget.StandaloneWindows)); 
+#elif UNITY_EDITOR_OSX
+        bool canRun = (Profile != null && Profile.Target == BuildTarget.StandaloneOSX);
+#elif UNITY_EDITOR_LINUX
+        bool canRun = (Profile != null && Profile.Target == BuildTarget.StandaloneLinux64);
+#else
+        bool canRun = false;
+#endif
+        if (canRun)
+        {
+            ProcessStartInfo info = new ProcessStartInfo();
+            string path = Application.dataPath + "/../" + BuildPath;
+            info.FileName = path + ExecutableName;
+            info.Arguments = RunWithArguments;
+            info.WorkingDirectory = path;
+            info.UseShellExecute = false;
 
-        Process process = Process.Start(info);
-        
+            EditorUtility.DisplayProgressBar("Build Frontend", $"Running Player : {info.FileName}", 1.0f);
+
+            Process process = Process.Start(info);
+        }
+        else
+        {
+            // TODO : Open File Explorer
+            throw new NotImplementedException();
+        }
+
+
+    
     }
 }
