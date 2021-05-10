@@ -140,18 +140,26 @@ namespace BuildFrontend
             }
         }
 
+        public bool canRunFromEditor
+        {
+            get
+            {
+#if UNITY_EDITOR_WIN
+                return Profile.Target == BuildTarget.StandaloneWindows64 || Profile.Target == BuildTarget.StandaloneWindows;
+#elif UNITY_EDITOR_OSX
+                return Profile.Target == BuildTarget.StandaloneOSX;
+#elif UNITY_EDITOR_LINUX
+                return Profile.Target == BuildTarget.StandaloneLinux64;
+#else
+                return false;
+#endif         
+            }
+        }
+
         public void RunBuild()
         {
-            bool canRun = (Profile != null && !OpenInExplorer);
-#if UNITY_EDITOR_WIN
-            canRun = canRun & (Profile.Target == BuildTarget.StandaloneWindows64 || Profile.Target == BuildTarget.StandaloneWindows);
-#elif UNITY_EDITOR_OSX
-            canRun = canRun & (Profile.Target == BuildTarget.StandaloneOSX);
-#elif UNITY_EDITOR_LINUX
-            canRun = canRun & (Profile.Target == BuildTarget.StandaloneLinux64);
-#else
-        bool canRun = false;
-#endif
+            bool canRun = Profile != null && !OpenInExplorer && canRunFromEditor;
+
             string path = buildFullPath;
 
             if (canRun)

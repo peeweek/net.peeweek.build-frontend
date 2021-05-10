@@ -392,18 +392,32 @@ namespace BuildFrontend
                         EditorGUI.EndDisabledGroup();
                     }
 
-                    EditorGUI.BeginDisabledGroup(template == null || !template.foundBuildExecutable);
-
-                    if (GUILayout.Button("Run Last Build", Styles.MiniButton))
+                    if(template.canRunFromEditor && !template.OpenInExplorer)
                     {
-                        EnqueueAction(() =>
+                        EditorGUI.BeginDisabledGroup(template == null || !template.foundBuildExecutable);
+
+                        if (GUILayout.Button("Run Last Build", Styles.MiniButton))
                         {
-                            template.RunBuild();
-                            m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Started running template: {template.name} ...";
-                            Repaint();
-                        });
+                            EnqueueAction(() =>
+                            {
+                                template.RunBuild();
+                                m_CurrentLog = $"[{DateTime.Now.ToShortTimeString()}] Started running template: {template.name} ...";
+                                Repaint();
+                            });
+                        }
+                        EditorGUI.EndDisabledGroup();
                     }
-                    EditorGUI.EndDisabledGroup();
+                    else
+                    {
+                        if (GUILayout.Button("Open Output Folder", Styles.MiniButton))
+                        {
+                            EnqueueAction(() =>
+                            {
+                                template.RunBuild();
+                                Repaint();
+                            });
+                        }
+                    }
                 }
 
             }
@@ -450,7 +464,9 @@ namespace BuildFrontend
             var summary = report.summary;
 
             if (GUILayout.Button("Open Report Details..."))
+            {
                 Selection.activeObject = report;
+            }
 
             GUILayout.Space(8);
             GUILayout.Label("Total Build Time :" + summary.totalTime);
