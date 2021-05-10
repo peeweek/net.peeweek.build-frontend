@@ -2,6 +2,8 @@
 
 ## 2.0.0
 
+Minimal version is now 2020.3
+
 Major refactor and going out of preview
 
 * Reworked UI and simplified workflow
