@@ -4,10 +4,10 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
+using System.IO;
 
 namespace BuildFrontend
 {
-
     public class BuildTemplate : BuildFrontendAssetBase
     {
         public bool BuildEnabled
@@ -32,6 +32,7 @@ namespace BuildFrontend
 
         [Header("Build/Run Options")]
         public bool CleanupBeforeBuild = true;
+        public bool OpenInExplorer = false;
         public string RunWithArguments;
         public BuildProcessor[] processors;
 
@@ -59,7 +60,7 @@ namespace BuildFrontend
                                 continue;
 
                             EditorUtility.DisplayProgressBar("Build Frontend", $"Pre-Processing : {processor.name}", 0.0f);
-                            if(!processor.OnPreProcess(this))
+                            if(!processor.OnPreProcess(this, run))
                             {
                                 throw new BuildProcessorException(processor, this);
                             }
@@ -81,6 +82,22 @@ namespace BuildFrontend
                     }
 
                     report = BuildPipeline.BuildPlayer(SceneList.scenePaths, BuildPath + ExecutableName, Profile.Target, options);
+
+                    if (processors != null)
+                    {
+                        foreach (var processor in processors)
+                        {
+                            if (processor == null)
+                                continue;
+
+                            EditorUtility.DisplayProgressBar("Build Frontend", $"Post-Processing : {processor.name}", 0.0f);
+                            if (!processor.OnPostProcess(this, run))
+                            {
+                                throw new BuildProcessorException(processor, this);
+                            }
+                        }
+                    }
+
                     if (run)
                     {
                         if (
@@ -92,20 +109,7 @@ namespace BuildFrontend
                         }
                     }
 
-                    if (processors != null)
-                    {
-                        foreach (var processor in processors)
-                        {
-                            if (processor == null)
-                                continue;
 
-                            EditorUtility.DisplayProgressBar("Build Frontend", $"Post-Processing : {processor.name}", 0.0f);
-                            if (!processor.OnPostProcess(this))
-                            {
-                                throw new BuildProcessorException(processor, this);
-                            }
-                        }
-                    }
 
 
                 }
@@ -126,43 +130,64 @@ namespace BuildFrontend
             return report;
         }
 
-        public bool canRunBuild
+        public string buildFullPath => Path.GetFullPath(Path.Combine(Path.Combine(Application.dataPath, ".."), BuildPath));
+
+        public bool foundBuildExecutable
         {
             get
             {
-                return System.IO.File.Exists(Application.dataPath + "/../" + BuildPath + ExecutableName);
+                return File.Exists(Path.Combine(buildFullPath + ExecutableName));
             }
         }
 
         public void RunBuild()
         {
-
+            bool canRun = (Profile != null && !OpenInExplorer);
 #if UNITY_EDITOR_WIN
-            bool canRun = (Profile != null && (Profile.Target == BuildTarget.StandaloneWindows64 || Profile.Target == BuildTarget.StandaloneWindows));
+            canRun = canRun & (Profile.Target == BuildTarget.StandaloneWindows64 || Profile.Target == BuildTarget.StandaloneWindows);
 #elif UNITY_EDITOR_OSX
-        bool canRun = (Profile != null && Profile.Target == BuildTarget.StandaloneOSX);
+            canRun = canRun & (Profile.Target == BuildTarget.StandaloneOSX);
 #elif UNITY_EDITOR_LINUX
-        bool canRun = (Profile != null && Profile.Target == BuildTarget.StandaloneLinux64);
+            canRun = canRun & (Profile.Target == BuildTarget.StandaloneLinux64);
 #else
         bool canRun = false;
 #endif
+            string path = buildFullPath;
+
             if (canRun)
             {
                 ProcessStartInfo info = new ProcessStartInfo();
-                string path = Application.dataPath + "/../" + BuildPath;
                 info.FileName = path + ExecutableName;
                 info.Arguments = RunWithArguments;
                 info.WorkingDirectory = path;
                 info.UseShellExecute = false;
 
                 EditorUtility.DisplayProgressBar("Build Frontend", $"Running Player : {info.FileName}", 1.0f);
-
                 Process process = Process.Start(info);
+                EditorUtility.ClearProgressBar();
             }
             else
             {
-                // TODO : Open File Explorer
-                throw new NotImplementedException();
+                ProcessStartInfo info = new ProcessStartInfo();
+                path = $"\"{path}\"";
+
+#if UNITY_EDITOR_WIN
+                info.FileName = "explorer.exe";
+                path = path.Replace("/", "\\");
+                info.Arguments = $"/root,{path}";
+#elif UNITY_EDITOR_OSX
+                info.FileName = "open";
+                path = path.Replace("\\", "/");
+                info.Arguments = $"{path}";
+#elif UNITY_EDITOR_LINUX
+                info.FileName = "nautilus";
+                path = path.Replace("\\", "/");
+                info.Arguments = $"{path}";
+#else
+                return;
+#endif
+
+                Process process = Process.Start(info);
             }
 
 

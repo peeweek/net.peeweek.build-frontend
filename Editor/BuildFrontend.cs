@@ -390,7 +390,7 @@ namespace BuildFrontend
                         EditorGUI.EndDisabledGroup();
                     }
 
-                    EditorGUI.BeginDisabledGroup(template == null || !template.canRunBuild);
+                    EditorGUI.BeginDisabledGroup(template == null || !template.foundBuildExecutable);
 
                     if (GUILayout.Button("Run Last Build", Styles.MiniButton))
                     {
