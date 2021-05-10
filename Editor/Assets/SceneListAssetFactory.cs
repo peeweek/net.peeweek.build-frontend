@@ -1,9 +1,9 @@
 using UnityEngine;
-using UnityEditor.Callbacks;
+using UnityEditor;
 using UnityEditor.ProjectWindowCallback;
 using System.IO;
 
-namespace UnityEditor.VFXToolbox.ImageSequencer
+namespace BuildFrontend
 {
     internal class SceneListAssetFactory
     {
