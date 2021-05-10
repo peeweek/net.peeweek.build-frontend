@@ -10,7 +10,7 @@ namespace BuildFrontend
 {
     public class BuildFrontend : EditorWindow
     {
-        public const int CreateAssetMenuPriority = 5801;
+        public const int CreateAssetMenuPriority = 801;
         public const int WindowMenuPriority = 203;
 
         [MenuItem("File/Build Frontend %&B", priority = WindowMenuPriority)]

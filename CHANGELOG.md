@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0
+
+Major refactor and going out of preview
+
+* Reworked UI and simplified workflow
+* Better handling of Run on editor platforms (if can't run, then open explorer)
+* Added BuildProcessor script API that can handle processing before/after build
+
 ## 1.3.0-preview
 
 Minimal version is now 2019.3
