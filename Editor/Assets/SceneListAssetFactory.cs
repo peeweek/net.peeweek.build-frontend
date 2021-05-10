@@ -1,13 +1,13 @@
 using UnityEngine;
-using UnityEditor.Callbacks;
+using UnityEditor;
 using UnityEditor.ProjectWindowCallback;
 using System.IO;
 
-namespace UnityEditor.VFXToolbox.ImageSequencer
+namespace BuildFrontend
 {
     internal class SceneListAssetFactory
     {
-        [MenuItem("Assets/Create/Build/Scene List", priority = BuildFrontend.CreateAssetMenuPriority)]
+        [MenuItem("Assets/Create/Build Frontend/Scene List", priority = BuildFrontend.CreateAssetMenuPriority)]
         private static void MenuCreatePostProcessingProfile()
         {
             var icon = EditorGUIUtility.FindTexture("SceneList");

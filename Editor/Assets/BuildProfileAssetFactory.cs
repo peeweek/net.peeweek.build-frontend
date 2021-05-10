@@ -1,13 +1,13 @@
 using UnityEngine;
-using UnityEditor.Callbacks;
+using UnityEditor;
 using UnityEditor.ProjectWindowCallback;
 using System.IO;
 
-namespace UnityEditor.VFXToolbox.ImageSequencer
+namespace BuildFrontend
 {
     internal class BuildProfileAssetFactory
     {
-        [MenuItem("Assets/Create/Build/Build Profile", priority = BuildFrontend.CreateAssetMenuPriority)]
+        [MenuItem("Assets/Create/Build Frontend/Build Profile", priority = BuildFrontend.CreateAssetMenuPriority)]
         private static void MenuCreatePostProcessingProfile()
         {
             var icon = EditorGUIUtility.FindTexture("BuildProfile");

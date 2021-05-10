@@ -1,7 +1,9 @@
 {
     "name": "BuildFrontend-Editor",
-    "references": [],
-    "optionalUnityReferences": [],
+    "rootNamespace": "",
+    "references": [
+        "GUID:886b9d414587848d69561e2430a6ed6a"
+    ],
     "includePlatforms": [
         "Editor"
     ],
@@ -10,5 +12,7 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": []
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
