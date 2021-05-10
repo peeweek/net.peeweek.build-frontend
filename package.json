@@ -6,9 +6,11 @@
   "description": "Build Frontend GUI, an Editor tool that handles multiple configurations for building and executing Players",
   "type": "tool",
   "hideInEditor": false,
-  "author" : 
-  {
-    "name" : "PeeWeeK.NET",
-    "url" : "https://github.com/peeweek/"
+  "author": {
+    "name": "PeeWeeK.NET",
+    "url": "https://github.com/peeweek/"
+  },
+  "dependencies": {
+    "com.unity.build-report-inspector": "0.2.2-preview"
   }
 }

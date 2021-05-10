@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using System;
+using Unity.BuildReportInspector;
 
 namespace BuildFrontend
 {
@@ -137,6 +138,7 @@ namespace BuildFrontend
             BuildReport report = null;
             if (m_Reports.ContainsKey(selectedTemplate))
                 report = m_Reports[selectedTemplate];
+
             reportScroll = EditorGUILayout.BeginScrollView(reportScroll, Styles.scrollView);
 
             FormatHeaderGUI(selectedTemplate, report);
@@ -446,6 +448,9 @@ namespace BuildFrontend
         void FormatReportGUI(BuildTemplate template, BuildReport report)
         {
             var summary = report.summary;
+
+            if (GUILayout.Button("Open Report Details..."))
+                Selection.activeObject = report;
 
             GUILayout.Space(8);
             GUILayout.Label("Total Build Time :" + summary.totalTime);
