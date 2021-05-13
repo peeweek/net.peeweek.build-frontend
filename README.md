@@ -4,6 +4,8 @@
 
 A Unity GUI Frontend to manage build batches and review build reports
 
+![Build Frontend Screenshot](https://github.com/peeweek/net.peeweek.build-frontend/raw/master/Resources%7E/Screenshot.png)
+
 ## Install
 
 ### OpenUPM Scoped Registry (2020.3 and newer)
